@@ -1,0 +1,26 @@
+
+#This is the data card for the input of M2M3 analysis and TopMassFitter 
+# Auther : SCKao - UMN
+#
+
+# root files directory
+RootFiles = rootfiles/
+
+# Folder to store results
+Path = SLHC_tt/
+
+# plot type : png / gif / eps / jpg / pdf 
+PlotType = png
+
+# Files , '+' is the flag for TChain 
+TheData = ( data+ )
+#dataChain = ( shcal_mixtest )
+dataChain = ( shcal_tt_0, shcal_tt_2 )
+#dataChain = ( shcal_tt_test )
+
+ProcessEvents = -1
+
+# muon       minPt, maxPt, eta 
+MuonCuts = (  10,    500,  0.8  )
+
+
