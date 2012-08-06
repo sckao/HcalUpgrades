@@ -48,12 +48,13 @@ HcalAna::HcalAna(const edm::ParameterSet& iConfig) {
    setBranches( theTree, theLeaves ) ;
 
    // use for histogram analysis
+   /*
+   // for histograms
    theFile->cd() ;
    theFile->mkdir("Muon");
    theFile->cd() ;
    hbook = new IsoHisto() ;
-   
-
+   */
 
 }
 
@@ -64,11 +65,12 @@ HcalAna::~HcalAna() {
    // (e.g. close files, deallocate resources etc.)
    theFile->cd () ; 
    theTree->Write() ;
-
+   /*
+   // for histograms
    theFile->cd() ;
    hbook->Write("Muon", theFile );
    theFile->cd() ;
-
+   */
    theFile->Close() ;
 }
 
@@ -265,6 +267,8 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
       } 
    }
 
+   /*
+   // for histograms
    for ( int j=0; j < 4; j++ ) {
        if ( isReco ) {
           hbook->Fill_RecoIso( 0,j, muP4.Pt(), leaves.muIso1[muId][j], leaves.muIhit1[muId][j] ) ;
@@ -287,7 +291,7 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
           hbook->Fill_GenIso( 4,j, muP4.Pt(), leaves.genIso5[muId][j], leaves.genIhit5[muId][j] ) ;
        }
    }
-
+   */
 }
 
 void HcalAna::GetRecoMuons( const edm::Event& iEvent, Ntuple& leaves, vector<MuonSummary>& mlist ) {
