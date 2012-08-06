@@ -13,7 +13,7 @@
 //
 // Original Author:  Shih-Chuan Kao
 //         Created:  Tue May 29 10:59:50 CDT 2012
-// $Id$
+// $Id: HcalAna.cc,v 1.1 2012/06/14 21:38:34 sckao Exp $
 //
 //
 
@@ -36,6 +36,9 @@ HcalAna::HcalAna(const edm::ParameterSet& iConfig) {
    muonCuts      = iConfig.getParameter< vector<double> >("MuonCuts") ;
    vtxSource     = iConfig.getParameter<edm::InputTag> ("VertexSource") ;
    vtxCuts       = iConfig.getParameter< vector<double> >("VertexCuts") ;
+   jetSource     = iConfig.getParameter<edm::InputTag> ("jetSource");
+   jetCuts              = iConfig.getParameter<std::vector<double> >("jetCuts");
+
 
    // set the root file and ntuple tree
    theFile  = new TFile( rootFileName.c_str(), "RECREATE") ;
@@ -63,15 +66,22 @@ HcalAna::~HcalAna() {
 // ------------ method called for each event  ------------
 void HcalAna::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
+
    initializeBranches( theTree, theLeaves );
+
+   Handle<reco::PFJetCollection>      jets;
+   iEvent.getByLabel( jetSource,      jets  );
 
    theLeaves.runId       = iEvent.id().run() ;
    theLeaves.eventId     = iEvent.id().event() ;
 
    GetGenEvent( iEvent, theLeaves, debug_ ) ;
+
    vector<MuonSummary> mlist ;
    GetRecoMuons( iEvent, theLeaves, mlist ) ;
+
    CheckVertex( iEvent, theLeaves ) ;
+   JetSelection( jets, theLeaves ) ;
 
    theTree->Fill();
 
@@ -84,6 +94,8 @@ void HcalAna::CheckVertex( const edm::Event& iEvent, Ntuple& leaves ) {
 
    int nVtx = 0;
    for(reco::VertexCollection::const_iterator v=vtx->begin();  v!=vtx->end() ; v++){
+
+       if ( ! v->isValid() ||  v->isFake() ) continue ;
        if ( fabs(v->z()) >= vtxCuts[0] ) continue ; 
        if (   v->ndof()   < vtxCuts[1] ) continue ;
        double d0 = sqrt( ( v->x()*v->x() ) + ( v->y()*v->y() ) );
@@ -104,15 +116,58 @@ void HcalAna::CheckVertex( const edm::Event& iEvent, Ntuple& leaves ) {
        nVtx++ ;
    }
    leaves.nVertices = nVtx ;
+}
+
+bool HcalAna::JetSelection( Handle<reco::PFJetCollection> jets, Ntuple& leaves ) {
+
+   int k = 0 ;
+   for(reco::PFJetCollection::const_iterator it = jets->begin(); it != jets->end(); it++) {
+       // fiducial cuts
+       if ( it->pt() < jetCuts[0] || fabs( it->eta() ) > jetCuts[1] ) continue ;
+
+       // Loose JetID cuts
+       if ( it->numberOfDaughters() < 2 )                   continue ;
+       if ( it->neutralHadronEnergyFraction() >= 0.99 )     continue ;
+       if ( it->neutralEmEnergyFraction()     >= 0.99 )     continue ;
+       if ( fabs( it->eta() ) < 2.4 && it->chargedEmEnergyFraction()     >= 0.99 ) continue ;
+       if ( fabs( it->eta() ) < 2.4 && it->chargedHadronEnergyFraction() <= 0    ) continue ;
+       if ( fabs( it->eta() ) < 2.4 && it->chargedMultiplicity()         <= 0    ) continue ;
+       
+
+       if ( k >= MAXJET ) break ;
+       leaves.jetPx[k] = it->p4().Px() ;
+       leaves.jetPy[k] = it->p4().Py() ;
+       leaves.jetPz[k] = it->p4().Pz() ;
+       leaves.jetE[k]  = it->p4().E()  ;
+       leaves.jetNDau[k] = it->numberOfDaughters() ;
+
+       leaves.jetCM[k]   = it->chargedMultiplicity() ;
+       leaves.jetNM[k]   = it->neutralMultiplicity() ;
+       leaves.jetMM[k]   = it->muonMultiplicity() ;
+
+       leaves.jetCEF[k]  = it->chargedEmEnergyFraction() ;
+       leaves.jetCHF[k]  = it->chargedHadronEnergyFraction() ;
+       leaves.jetNHF[k]  = it->neutralHadronEnergyFraction() ;
+       leaves.jetNEF[k]  = it->neutralEmEnergyFraction() ;
+       leaves.jetMEF[k]  = it->muonEnergyFraction() ;
+       k++ ;
+   }
+   leaves.nJets = k ;
+
+   if ( k > jetCuts[2] ) return true  ;
+   else                  return false ;
 
 }
+
 
 void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4, Ntuple& leaves, bool isReco ) {
 
    edm::Handle<HBHERecHitCollection> hbhe;
    iEvent.getByLabel( HBHERecHits, hbhe);
 
+   //int jj = 0 ;
    for (HBHERecHitCollection::const_iterator ihit=hbhe->begin(); ihit!=hbhe->end(); ihit++) {
+
       // first, zero suppression!
       if ( ihit->energy() < zsThreshold ) continue;
 
@@ -120,30 +175,77 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
       int ieta=ihit->id().ieta();
       double eta_hit=2.0*M_PI/72.0*ieta+((ieta>0)?(-M_PI/72.0):(M_PI/72.0));
       int iphi=ihit->id().iphi();
-      double phi_hit=(iphi/72.0)*2.0*M_PI; // TODO: Double check
+      double phi_hit=( iphi <= 36 ) ?   (iphi/72.0)*2.0*M_PI : ( (iphi - 73) /72.0)*2.0*M_PI ; 
+      //double phi_hit= (iphi/72.0)*2.0*M_PI  ; 
       double hit_et=ihit->energy()/cosh(eta_hit);
  
       // construct the 4-vec for hcal hits
       ROOT::Math::RhoEtaPhiVector v1(1.0,eta_hit,phi_hit);
       TLorentzVector hP4( v1.X(), v1.Y(), v1.Z(), 1.0 );
       hP4 = hP4* ihit->energy() ; 
- 
+
       double dR = muP4.DeltaR( hP4 )  ;
 
-      for (int idep=0; idep<4; idep++) {
+      /* 
+      if ( jj == 0 ) { 
+         for ( int kk=1 ; kk <= 36 ; kk++ ) {
+             double phi_i = kk*1.0 ;
+	     double phi_j = kk*(-1.0) ; 
+	     double phi1 = ( phi_i / 72.)*2.*M_PI ;
+	     double phi2 = (phi_j / 72.)*2.*M_PI ;
+	     ROOT::Math::RhoEtaPhiVector v_360(1.0, 1., phi1 );
+	     ROOT::Math::RhoEtaPhiVector v_180(1.0, 1., phi2 );
+	     TLorentzVector testV1( v_360.X(), v_360.Y(), v_360.Z(), 1.0 );
+	     TLorentzVector testV2( v_180.X(), v_180.Y(), v_180.Z(), 1.0 );
+
+	     double dR1 = muP4.DeltaR( testV1 )  ;
+	     double dR2 = muP4.DeltaR( testV2 )  ;
+	     double dF1 = muP4.DeltaPhi( testV1 )  ;
+	     double dF2 = muP4.DeltaPhi( testV2 )  ;
+
+	     cout<<" v360_phi: "<< v_360.Phi() <<"  v180_phi: "<< v_180.Phi() <<endl ;
+	     cout<<" f1 : "<< testV1.Phi() <<"  f2 :"<< testV2.Phi() << endl ;
+	     cout<<" muP4 phi : "<< muP4.Phi() <<endl ;
+	     cout<<" dF1 : "<< dF1 <<"   dF2 : "<< dF2 <<"  ddF ="<< dF1 - dF2 <<endl ;
+	     cout<<" dR1 : "<< dR1 <<"   dR2 : "<< dR2 <<"  ddR ="<< dR1 - dR2 <<endl ;
+	     cout<<" ------------------------ "<<endl;
+	 }
+     }
+     jj++ ;
+     */
+
+      //printf(" h: %f, depth: %d \n", hP4.Eta(), ihit->id().depth()  ) ;
+
+      for (int idep=0; idep<5; idep++) {
           //if ( idep ==0 ) cout<<" L0 T : "<< ihit->time() <<endl ;  
+          //if ( abs(ieta) <= 16 && idep > 4  )  continue ;
+          //int hit_depth = (ihit->id().depth() < 4) ? ihit->id().depth() : 3  ;
+          int hit_depth = ihit->id().depth() - 1 ;
+
           if ( isReco ) {  
-             if ( ihit->id().depth() > idep && dR < 0.5 ) leaves.muIso5[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.4 ) leaves.muIso4[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.3 ) leaves.muIso3[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.2 ) leaves.muIso2[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.1 ) leaves.muIso1[muId][idep] += hit_et ;
+             if ( hit_depth == idep && dR < 0.5 ) leaves.muIso5[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.4 ) leaves.muIso4[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.3 ) leaves.muIso3[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.2 ) leaves.muIso2[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.1 ) leaves.muIso1[muId][idep] += hit_et ;
+
+             if ( hit_depth == idep && dR < 0.5 ) leaves.muIhit5[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.4 ) leaves.muIhit4[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.3 ) leaves.muIhit3[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.2 ) leaves.muIhit2[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.1 ) leaves.muIhit1[muId][idep] += 1 ;
 	  } else {
-             if ( ihit->id().depth() > idep && dR < 0.5 ) leaves.genIso5[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.4 ) leaves.genIso4[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.3 ) leaves.genIso3[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.2 ) leaves.genIso2[muId][idep] += hit_et ;
-	     if ( ihit->id().depth() > idep && dR < 0.1 ) leaves.genIso1[muId][idep] += hit_et ;
+             if ( hit_depth == idep && dR < 0.5 ) leaves.genIso5[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.4 ) leaves.genIso4[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.3 ) leaves.genIso3[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.2 ) leaves.genIso2[muId][idep] += hit_et ;
+	     if ( hit_depth == idep && dR < 0.1 ) leaves.genIso1[muId][idep] += hit_et ;
+
+             if ( hit_depth == idep && dR < 0.5 ) leaves.genIhit5[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.4 ) leaves.genIhit4[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.3 ) leaves.genIhit3[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.2 ) leaves.genIhit2[muId][idep] += 1 ;
+	     if ( hit_depth == idep && dR < 0.1 ) leaves.genIhit1[muId][idep] += 1 ;
 	  }
       } 
    }
@@ -158,6 +260,7 @@ void HcalAna::GetRecoMuons( const edm::Event& iEvent, Ntuple& leaves, vector<Muo
    int nMu = 0 ; 
    for(reco::MuonCollection::const_iterator it = muons->begin(); it != muons->end(); it++) {
       if ( it->pt() < muonCuts[0] || fabs( it->eta() ) > muonCuts[1] ) continue ;
+      if ( nMu >= 10 ) continue ;
       //if ( ! it->isCaloMuon() ) continue ;
 
       // keep selected muons for other functions

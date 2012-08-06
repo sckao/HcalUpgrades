@@ -16,7 +16,7 @@
 //
 // Original Author:  Shih-Chuan Kao
 //         Created:  Tue May 29 10:59:50 CDT 2012
-// $Id$
+// $Id: HcalAna.h,v 1.1 2012/06/14 21:38:34 sckao Exp $
 //
 //
 
@@ -42,6 +42,7 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/JetReco/interface/PFJetCollection.h"
 
 #include "DataFormats/Math/interface/LorentzVector.h"
 #include <TMath.h>
@@ -75,10 +76,11 @@ class HcalAna : public edm::EDAnalyzer {
    private:
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
       void GetGenEvent( const edm::Event& , Ntuple& leaves, bool debug = false ) ;
-      void GetRecoMuons( const edm::Event& , Ntuple& leaves, vector<MuonSummary>& mlist ) ;
       void LoopHCAL( const edm::Event& , int muId, TLorentzVector muP4, Ntuple& leaves, bool isReco ) ;
       int  TraceMom( HepMC::GenVertex* &vtx, bool debug = false ) ;
+      void GetRecoMuons( const edm::Event& , Ntuple& leaves, vector<MuonSummary>& mlist ) ;
       void CheckVertex( const edm::Event& , Ntuple& leaves );
+      bool JetSelection( edm::Handle<reco::PFJetCollection> jets, Ntuple& leaves );
 
       /*
       virtual void beginJob() ;
@@ -99,9 +101,11 @@ class HcalAna : public edm::EDAnalyzer {
       double zsThreshold ;
       edm::InputTag HBHERecHits ; 
       edm::InputTag muonSource ;
+      edm::InputTag jetSource ;
       edm::InputTag vtxSource ;
       std::vector<double> muonCuts ;  
       std::vector<double> vtxCuts ;  
+      std::vector<double> jetCuts ;  
 };
 
 #endif

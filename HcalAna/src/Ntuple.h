@@ -3,8 +3,8 @@
 
 #include "TChain.h" 
 
-#define MAXJET 15
-#define MAXMU 10
+#define MAXJET 20
+#define MAXMU  10
 #define MAXGEN 20
 
 struct Ntuple
@@ -22,6 +22,16 @@ struct Ntuple
   float jetPy[MAXJET];
   float jetPz[MAXJET];
   float jetE[MAXJET];
+  int   jetNDau[MAXJET];
+  int   jetCM[MAXJET];
+  int   jetNM[MAXJET];
+  int   jetMM[MAXJET];
+  float jetCEF[MAXJET];
+  float jetCHF[MAXJET];
+  float jetNEF[MAXJET];
+  float jetNHF[MAXJET];
+  float jetMEF[MAXJET];
+
   
   int   nMuons ;
   float muPx[MAXMU];
@@ -33,6 +43,11 @@ struct Ntuple
   float muIso3[MAXMU][5];
   float muIso2[MAXMU][5];
   float muIso1[MAXMU][5];
+  int   muIhit5[MAXMU][5];
+  int   muIhit4[MAXMU][5];
+  int   muIhit3[MAXMU][5];
+  int   muIhit2[MAXMU][5];
+  int   muIhit1[MAXMU][5];
 
   // Gen Particle information
   int nGen ; 
@@ -50,6 +65,11 @@ struct Ntuple
   float genIso3[MAXGEN][5];
   float genIso2[MAXGEN][5];
   float genIso1[MAXGEN][5];
+  int   genIhit5[MAXGEN][5];
+  int   genIhit4[MAXGEN][5];
+  int   genIhit3[MAXGEN][5];
+  int   genIhit2[MAXGEN][5];
+  int   genIhit1[MAXGEN][5];
 
 };
 
@@ -62,7 +82,6 @@ void setBranches(TTree* chain, Ntuple& treeVars);
 
 //! initialize branches
 void initializeBranches(TTree* chain, Ntuple& treeVars);
-
 
 
 #endif
