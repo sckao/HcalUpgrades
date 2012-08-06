@@ -43,8 +43,17 @@ HcalAna::HcalAna(const edm::ParameterSet& iConfig) {
    // set the root file and ntuple tree
    theFile  = new TFile( rootFileName.c_str(), "RECREATE") ;
    theFile->cd () ;
+
    theTree  = new TTree ( "HcalUpgrade","HcalUpgrade" ) ;
    setBranches( theTree, theLeaves ) ;
+
+   // use for histogram analysis
+   theFile->cd() ;
+   theFile->mkdir("Muon");
+   theFile->cd() ;
+   hbook = new IsoHisto() ;
+   
+
 
 }
 
@@ -55,6 +64,11 @@ HcalAna::~HcalAna() {
    // (e.g. close files, deallocate resources etc.)
    theFile->cd () ; 
    theTree->Write() ;
+
+   theFile->cd() ;
+   hbook->Write("Muon", theFile );
+   theFile->cd() ;
+
    theFile->Close() ;
 }
 
@@ -234,6 +248,7 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
 	     if ( hit_depth == idep && dR < 0.3 ) leaves.muIhit3[muId][idep] += 1 ;
 	     if ( hit_depth == idep && dR < 0.2 ) leaves.muIhit2[muId][idep] += 1 ;
 	     if ( hit_depth == idep && dR < 0.1 ) leaves.muIhit1[muId][idep] += 1 ;
+
 	  } else {
              if ( hit_depth == idep && dR < 0.5 ) leaves.genIso5[muId][idep] += hit_et ;
 	     if ( hit_depth == idep && dR < 0.4 ) leaves.genIso4[muId][idep] += hit_et ;
@@ -248,6 +263,29 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
 	     if ( hit_depth == idep && dR < 0.1 ) leaves.genIhit1[muId][idep] += 1 ;
 	  }
       } 
+   }
+
+   for ( int j=0; j < 4; j++ ) {
+       if ( isReco ) {
+          hbook->Fill_RecoIso( 0,j, muP4.Pt(), leaves.muIso1[muId][j], leaves.muIhit1[muId][j] ) ;
+          hbook->Fill_RecoIso( 1,j, muP4.Pt(), leaves.muIso2[muId][j], leaves.muIhit2[muId][j] ) ;
+          hbook->Fill_RecoIso( 2,j, muP4.Pt(), leaves.muIso3[muId][j], leaves.muIhit3[muId][j] ) ;
+          hbook->Fill_RecoIso( 3,j, muP4.Pt(), leaves.muIso4[muId][j], leaves.muIhit4[muId][j] ) ;
+          hbook->Fill_RecoIso( 4,j, muP4.Pt(), leaves.muIso5[muId][j], leaves.muIhit5[muId][j] ) ;
+
+       } else if ( abs(leaves.momId[muId])  ==  24 ) {
+          hbook->Fill_GenWIso( 0,j, muP4.Pt(), leaves.genIso1[muId][j], leaves.genIhit1[muId][j] ) ;
+          hbook->Fill_GenWIso( 1,j, muP4.Pt(), leaves.genIso2[muId][j], leaves.genIhit2[muId][j] ) ;
+          hbook->Fill_GenWIso( 2,j, muP4.Pt(), leaves.genIso3[muId][j], leaves.genIhit3[muId][j] ) ;
+          hbook->Fill_GenWIso( 3,j, muP4.Pt(), leaves.genIso4[muId][j], leaves.genIhit4[muId][j] ) ;
+          hbook->Fill_GenWIso( 4,j, muP4.Pt(), leaves.genIso5[muId][j], leaves.genIhit5[muId][j] ) ;
+       } else {
+          hbook->Fill_GenIso( 0,j, muP4.Pt(), leaves.genIso1[muId][j], leaves.genIhit1[muId][j] ) ;
+          hbook->Fill_GenIso( 1,j, muP4.Pt(), leaves.genIso2[muId][j], leaves.genIhit2[muId][j] ) ;
+          hbook->Fill_GenIso( 2,j, muP4.Pt(), leaves.genIso3[muId][j], leaves.genIhit3[muId][j] ) ;
+          hbook->Fill_GenIso( 3,j, muP4.Pt(), leaves.genIso4[muId][j], leaves.genIhit4[muId][j] ) ;
+          hbook->Fill_GenIso( 4,j, muP4.Pt(), leaves.genIso5[muId][j], leaves.genIhit5[muId][j] ) ;
+       }
    }
 
 }

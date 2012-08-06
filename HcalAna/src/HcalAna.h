@@ -53,6 +53,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "Ntuple.h"
+#include "Histogram.h"
 #include "TLorentzVector.h"
 
 //
@@ -95,6 +96,7 @@ class HcalAna : public edm::EDAnalyzer {
       Ntuple theLeaves ;
       TTree *theTree;
       TFile *theFile;
+      IsoHisto *hbook ;
 
       string rootFileName;
       bool   debug_ ;
