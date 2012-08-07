@@ -65,6 +65,21 @@ struct MuonSummary {
     TLorentzVector p4;
 };
 
+struct IsoInfo {
+
+    double et5 ;
+    double et4 ;
+    double et3 ;
+    double et2 ;
+    double et1 ;
+    int    nhit5 ;
+    int    nhit4 ;
+    int    nhit3 ;
+    int    nhit2 ;
+    int    nhit1 ;
+
+};
+
 class HcalAna : public edm::EDAnalyzer {
 
    public:
@@ -77,10 +92,15 @@ class HcalAna : public edm::EDAnalyzer {
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
       void GetGenEvent( const edm::Event& , Ntuple& leaves, bool debug = false ) ;
       void LoopHCAL( const edm::Event& , int muId, TLorentzVector muP4, Ntuple& leaves, bool isReco ) ;
+      //void LoopHCAL( edm::Handle<HBHERecHitCollection> hbhe, TLorentzVector muP4, IsoInfo iso[] ) ;
+      void LoopHCAL( TLorentzVector muP4, IsoInfo iso[] ) ;
+
       int  TraceMom( HepMC::GenVertex* &vtx, bool debug = false ) ;
       void GetRecoMuons( const edm::Event& , Ntuple& leaves, vector<MuonSummary>& mlist ) ;
       void CheckVertex( const edm::Event& , Ntuple& leaves );
       bool JetSelection( edm::Handle<reco::PFJetCollection> jets, Ntuple& leaves );
+
+      void Init_Isolist( int sz , IsoInfo isolist[] ) ;
 
       /*
       virtual void beginJob() ;
@@ -107,6 +127,9 @@ class HcalAna : public edm::EDAnalyzer {
       std::vector<double> muonCuts ;  
       std::vector<double> vtxCuts ;  
       std::vector<double> jetCuts ;  
+
+      edm::Handle<HBHERecHitCollection> hbhe; 
+
 };
 
 #endif

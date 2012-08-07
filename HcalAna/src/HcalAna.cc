@@ -88,6 +88,9 @@ void HcalAna::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
    Handle<reco::PFJetCollection>      jets;
    iEvent.getByLabel( jetSource,      jets  );
 
+   //edm::Handle<HBHERecHitCollection> hbhe;
+   iEvent.getByLabel( HBHERecHits, hbhe);
+
    theLeaves.runId       = iEvent.id().run() ;
    theLeaves.eventId     = iEvent.id().event() ;
 
@@ -151,10 +154,12 @@ bool HcalAna::JetSelection( Handle<reco::PFJetCollection> jets, Ntuple& leaves )
        
 
        if ( k >= MAXJET ) break ;
-       leaves.jetPx[k] = it->p4().Px() ;
-       leaves.jetPy[k] = it->p4().Py() ;
-       leaves.jetPz[k] = it->p4().Pz() ;
-       leaves.jetE[k]  = it->p4().E()  ;
+       TLorentzVector jP4 = TLorentzVector( it->p4().px(), it->p4().py(), it->p4().pz(), it->energy() );
+
+       leaves.jetPx[k] = it->p4().px() ;
+       leaves.jetPy[k] = it->p4().py() ;
+       leaves.jetPz[k] = it->p4().pz() ;
+       leaves.jetE[k]  = it->p4().energy()  ;
        leaves.jetNDau[k] = it->numberOfDaughters() ;
 
        leaves.jetCM[k]   = it->chargedMultiplicity() ;
@@ -166,6 +171,24 @@ bool HcalAna::JetSelection( Handle<reco::PFJetCollection> jets, Ntuple& leaves )
        leaves.jetNHF[k]  = it->neutralHadronEnergyFraction() ;
        leaves.jetNEF[k]  = it->neutralEmEnergyFraction() ;
        leaves.jetMEF[k]  = it->muonEnergyFraction() ;
+
+       // get HCAL iso-deposit  
+       IsoInfo isolist[5] ;
+       LoopHCAL( jP4, isolist  ) ;
+       for ( int j=0; j<5; j++) {
+           leaves.jetIso5[k][j] = isolist[j].et5 ;
+           leaves.jetIso4[k][j] = isolist[j].et4 ;
+           leaves.jetIso3[k][j] = isolist[j].et3 ;
+           leaves.jetIso2[k][j] = isolist[j].et2 ;
+           leaves.jetIso1[k][j] = isolist[j].et1 ;
+
+           leaves.jetIhit5[k][j] = isolist[j].nhit5 ;
+           leaves.jetIhit4[k][j] = isolist[j].nhit4 ;
+           leaves.jetIhit3[k][j] = isolist[j].nhit3 ;
+           leaves.jetIhit2[k][j] = isolist[j].nhit2 ;
+           leaves.jetIhit1[k][j] = isolist[j].nhit1 ;
+       }
+
        k++ ;
    }
    leaves.nJets = k ;
@@ -176,11 +199,9 @@ bool HcalAna::JetSelection( Handle<reco::PFJetCollection> jets, Ntuple& leaves )
 }
 
 
-void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4, Ntuple& leaves, bool isReco ) {
+void HcalAna::LoopHCAL(  TLorentzVector objP4, IsoInfo isolist[] ) {
 
-   edm::Handle<HBHERecHitCollection> hbhe;
-   iEvent.getByLabel( HBHERecHits, hbhe);
-
+   Init_Isolist(5, isolist );
    //int jj = 0 ;
    for (HBHERecHitCollection::const_iterator ihit=hbhe->begin(); ihit!=hbhe->end(); ihit++) {
 
@@ -200,35 +221,7 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
       TLorentzVector hP4( v1.X(), v1.Y(), v1.Z(), 1.0 );
       hP4 = hP4* ihit->energy() ; 
 
-      double dR = muP4.DeltaR( hP4 )  ;
-
-      /* 
-      if ( jj == 0 ) { 
-         for ( int kk=1 ; kk <= 36 ; kk++ ) {
-             double phi_i = kk*1.0 ;
-	     double phi_j = kk*(-1.0) ; 
-	     double phi1 = ( phi_i / 72.)*2.*M_PI ;
-	     double phi2 = (phi_j / 72.)*2.*M_PI ;
-	     ROOT::Math::RhoEtaPhiVector v_360(1.0, 1., phi1 );
-	     ROOT::Math::RhoEtaPhiVector v_180(1.0, 1., phi2 );
-	     TLorentzVector testV1( v_360.X(), v_360.Y(), v_360.Z(), 1.0 );
-	     TLorentzVector testV2( v_180.X(), v_180.Y(), v_180.Z(), 1.0 );
-
-	     double dR1 = muP4.DeltaR( testV1 )  ;
-	     double dR2 = muP4.DeltaR( testV2 )  ;
-	     double dF1 = muP4.DeltaPhi( testV1 )  ;
-	     double dF2 = muP4.DeltaPhi( testV2 )  ;
-
-	     cout<<" v360_phi: "<< v_360.Phi() <<"  v180_phi: "<< v_180.Phi() <<endl ;
-	     cout<<" f1 : "<< testV1.Phi() <<"  f2 :"<< testV2.Phi() << endl ;
-	     cout<<" muP4 phi : "<< muP4.Phi() <<endl ;
-	     cout<<" dF1 : "<< dF1 <<"   dF2 : "<< dF2 <<"  ddF ="<< dF1 - dF2 <<endl ;
-	     cout<<" dR1 : "<< dR1 <<"   dR2 : "<< dR2 <<"  ddR ="<< dR1 - dR2 <<endl ;
-	     cout<<" ------------------------ "<<endl;
-	 }
-     }
-     jj++ ;
-     */
+      double dR = objP4.DeltaR( hP4 )  ;
 
       //printf(" h: %f, depth: %d \n", hP4.Eta(), ihit->id().depth()  ) ;
 
@@ -238,60 +231,21 @@ void HcalAna::LoopHCAL( const edm::Event& iEvent, int muId, TLorentzVector muP4,
           //int hit_depth = (ihit->id().depth() < 4) ? ihit->id().depth() : 3  ;
           int hit_depth = ihit->id().depth() - 1 ;
 
-          if ( isReco ) {  
-             if ( hit_depth == idep && dR < 0.5 ) leaves.muIso5[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.4 ) leaves.muIso4[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.3 ) leaves.muIso3[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.2 ) leaves.muIso2[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.1 ) leaves.muIso1[muId][idep] += hit_et ;
-
-             if ( hit_depth == idep && dR < 0.5 ) leaves.muIhit5[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.4 ) leaves.muIhit4[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.3 ) leaves.muIhit3[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.2 ) leaves.muIhit2[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.1 ) leaves.muIhit1[muId][idep] += 1 ;
-
-	  } else {
-             if ( hit_depth == idep && dR < 0.5 ) leaves.genIso5[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.4 ) leaves.genIso4[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.3 ) leaves.genIso3[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.2 ) leaves.genIso2[muId][idep] += hit_et ;
-	     if ( hit_depth == idep && dR < 0.1 ) leaves.genIso1[muId][idep] += hit_et ;
-
-             if ( hit_depth == idep && dR < 0.5 ) leaves.genIhit5[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.4 ) leaves.genIhit4[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.3 ) leaves.genIhit3[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.2 ) leaves.genIhit2[muId][idep] += 1 ;
-	     if ( hit_depth == idep && dR < 0.1 ) leaves.genIhit1[muId][idep] += 1 ;
-	  }
+          if ( hit_depth == idep && dR < 0.5 ) isolist[idep].et5 += hit_et ;
+	  if ( hit_depth == idep && dR < 0.4 ) isolist[idep].et4 += hit_et ;
+	  if ( hit_depth == idep && dR < 0.3 ) isolist[idep].et3 += hit_et ;
+	  if ( hit_depth == idep && dR < 0.2 ) isolist[idep].et2 += hit_et ;
+	  if ( hit_depth == idep && dR < 0.1 ) isolist[idep].et1 += hit_et ;
+           
+	  if ( hit_depth == idep && dR < 0.5 ) isolist[idep].nhit5 += 1 ;
+	  if ( hit_depth == idep && dR < 0.4 ) isolist[idep].nhit4 += 1 ;
+	  if ( hit_depth == idep && dR < 0.3 ) isolist[idep].nhit3 += 1 ;
+	  if ( hit_depth == idep && dR < 0.2 ) isolist[idep].nhit2 += 1 ;
+	  if ( hit_depth == idep && dR < 0.1 ) isolist[idep].nhit1 += 1 ;
+          
       } 
    }
 
-   /*
-   // for histograms
-   for ( int j=0; j < 4; j++ ) {
-       if ( isReco ) {
-          hbook->Fill_RecoIso( 0,j, muP4.Pt(), leaves.muIso1[muId][j], leaves.muIhit1[muId][j] ) ;
-          hbook->Fill_RecoIso( 1,j, muP4.Pt(), leaves.muIso2[muId][j], leaves.muIhit2[muId][j] ) ;
-          hbook->Fill_RecoIso( 2,j, muP4.Pt(), leaves.muIso3[muId][j], leaves.muIhit3[muId][j] ) ;
-          hbook->Fill_RecoIso( 3,j, muP4.Pt(), leaves.muIso4[muId][j], leaves.muIhit4[muId][j] ) ;
-          hbook->Fill_RecoIso( 4,j, muP4.Pt(), leaves.muIso5[muId][j], leaves.muIhit5[muId][j] ) ;
-
-       } else if ( abs(leaves.momId[muId])  ==  24 ) {
-          hbook->Fill_GenWIso( 0,j, muP4.Pt(), leaves.genIso1[muId][j], leaves.genIhit1[muId][j] ) ;
-          hbook->Fill_GenWIso( 1,j, muP4.Pt(), leaves.genIso2[muId][j], leaves.genIhit2[muId][j] ) ;
-          hbook->Fill_GenWIso( 2,j, muP4.Pt(), leaves.genIso3[muId][j], leaves.genIhit3[muId][j] ) ;
-          hbook->Fill_GenWIso( 3,j, muP4.Pt(), leaves.genIso4[muId][j], leaves.genIhit4[muId][j] ) ;
-          hbook->Fill_GenWIso( 4,j, muP4.Pt(), leaves.genIso5[muId][j], leaves.genIhit5[muId][j] ) ;
-       } else {
-          hbook->Fill_GenIso( 0,j, muP4.Pt(), leaves.genIso1[muId][j], leaves.genIhit1[muId][j] ) ;
-          hbook->Fill_GenIso( 1,j, muP4.Pt(), leaves.genIso2[muId][j], leaves.genIhit2[muId][j] ) ;
-          hbook->Fill_GenIso( 2,j, muP4.Pt(), leaves.genIso3[muId][j], leaves.genIhit3[muId][j] ) ;
-          hbook->Fill_GenIso( 3,j, muP4.Pt(), leaves.genIso4[muId][j], leaves.genIhit4[muId][j] ) ;
-          hbook->Fill_GenIso( 4,j, muP4.Pt(), leaves.genIso5[muId][j], leaves.genIhit5[muId][j] ) ;
-       }
-   }
-   */
 }
 
 void HcalAna::GetRecoMuons( const edm::Event& iEvent, Ntuple& leaves, vector<MuonSummary>& mlist ) {
@@ -318,7 +272,21 @@ void HcalAna::GetRecoMuons( const edm::Event& iEvent, Ntuple& leaves, vector<Muo
       leaves.muE[nMu]  = it->energy() ;  
 
       // get HCAL iso-deposit  
-      LoopHCAL( iEvent, nMu, theMu.p4, leaves, true ) ;
+      IsoInfo isolist[5] ;
+      LoopHCAL( theMu.p4, isolist  ) ;
+      for ( int j=0; j<5; j++) {
+          leaves.muIso5[nMu][j] = isolist[j].et5 ;
+	  leaves.muIso4[nMu][j] = isolist[j].et4 ;
+	  leaves.muIso3[nMu][j] = isolist[j].et3 ;
+	  leaves.muIso2[nMu][j] = isolist[j].et2 ;
+	  leaves.muIso1[nMu][j] = isolist[j].et1 ;
+
+	  leaves.muIhit5[nMu][j] = isolist[j].nhit5 ;
+	  leaves.muIhit4[nMu][j] = isolist[j].nhit4 ;
+	  leaves.muIhit3[nMu][j] = isolist[j].nhit3 ;
+	  leaves.muIhit2[nMu][j] = isolist[j].nhit2 ;
+	  leaves.muIhit1[nMu][j] = isolist[j].nhit1 ;
+      }
 
       nMu++;
    }
@@ -396,7 +364,21 @@ void HcalAna::GetGenEvent( const edm::Event& iEvent, Ntuple& leaves, bool debug 
          leaves.momId[mId] = momId ;
 
          // get HCAL iso-deposit  
-         LoopHCAL( iEvent, mId, theGenP4, leaves, false ) ;
+	 IsoInfo isolist[5] ;
+	 LoopHCAL( theGenP4, isolist  ) ;
+	 for ( int j=0; j<5; j++) {
+             leaves.genIso5[mId][j] = isolist[j].et5 ;
+	     leaves.genIso4[mId][j] = isolist[j].et4 ;
+	     leaves.genIso3[mId][j] = isolist[j].et3 ;
+	     leaves.genIso2[mId][j] = isolist[j].et2 ;
+	     leaves.genIso1[mId][j] = isolist[j].et1 ;
+
+	     leaves.genIhit5[mId][j] = isolist[j].nhit5 ;
+	     leaves.genIhit4[mId][j] = isolist[j].nhit4 ;
+	     leaves.genIhit3[mId][j] = isolist[j].nhit3 ;
+	     leaves.genIhit2[mId][j] = isolist[j].nhit2 ;
+	     leaves.genIhit1[mId][j] = isolist[j].nhit1 ;
+         }
 
          // kids from this vetex 
 	 if ( debug ) {  
@@ -410,6 +392,23 @@ void HcalAna::GetGenEvent( const edm::Event& iEvent, Ntuple& leaves, bool debug 
          mId++ ;
    }
    leaves.nGen = mId  ;
+}
+
+void HcalAna::Init_Isolist( int sz , IsoInfo isolist[] ) {
+
+     for ( int i=0; i < sz; i++) {
+         isolist[i].et5 = 0 ;
+	 isolist[i].et4 = 0 ;
+	 isolist[i].et3 = 0 ;
+	 isolist[i].et2 = 0 ;
+	 isolist[i].et1 = 0 ;
+
+	 isolist[i].nhit5 = 0 ;
+	 isolist[i].nhit4 = 0 ;
+	 isolist[i].nhit3 = 0 ;
+	 isolist[i].nhit2 = 0 ;
+	 isolist[i].nhit1 = 0 ;
+     }
 }
 
 // ------------ method called once each job just before starting event loop  ------------

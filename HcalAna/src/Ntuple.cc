@@ -41,7 +41,16 @@ void setBranchAddresses(TTree* chain, Ntuple& treeVars)
   chain -> SetBranchAddress("jetNHF",       treeVars.jetNHF    );
   chain -> SetBranchAddress("jetNEF",       treeVars.jetNEF    );
   chain -> SetBranchAddress("jetMEF",        treeVars.jetMEF    );
-
+  chain -> SetBranchAddress("jetIso5",      treeVars.jetIso5     );
+  chain -> SetBranchAddress("jetIso4",      treeVars.jetIso4     );
+  chain -> SetBranchAddress("jetIso3",      treeVars.jetIso3     );
+  chain -> SetBranchAddress("jetIso2",      treeVars.jetIso2     );
+  chain -> SetBranchAddress("jetIso1",      treeVars.jetIso1     );
+  chain -> SetBranchAddress("jetIhit5",     treeVars.jetIhit5     );
+  chain -> SetBranchAddress("jetIhit4",     treeVars.jetIhit4     );
+  chain -> SetBranchAddress("jetIhit3",     treeVars.jetIhit3     );
+  chain -> SetBranchAddress("jetIhit2",     treeVars.jetIhit2     );
+  chain -> SetBranchAddress("jetIhit1",     treeVars.jetIhit1     );
 
   chain -> SetBranchAddress("pdgId",        treeVars.pdgId       );
   chain -> SetBranchAddress("momId",        treeVars.momId       );
@@ -106,6 +115,16 @@ void setBranches(TTree* chain, Ntuple& treeVars)
   chain -> Branch("jetNEF",       treeVars.jetNEF,                "jetNEF[nJets]/F" );
   chain -> Branch("jetNHF",       treeVars.jetNHF,                "jetNHF[nJets]/F" );
   chain -> Branch("jetMEF",       treeVars.jetMEF,                "jetMEF[nJets]/F" );
+  chain -> Branch("jetIso5",      treeVars.jetIso5,               "jetIso5[nJets][5]/F");
+  chain -> Branch("jetIso4",      treeVars.jetIso4,               "jetIso4[nJets][5]/F");
+  chain -> Branch("jetIso3",      treeVars.jetIso3,               "jetIso3[nJets][5]/F");
+  chain -> Branch("jetIso2",      treeVars.jetIso2,               "jetIso2[nJets][5]/F");
+  chain -> Branch("jetIso1",      treeVars.jetIso1,               "jetIso1[nJets][5]/F");
+  chain -> Branch("jetIhit5",     treeVars.jetIhit5,              "jetIhit5[nJets][5]/I");
+  chain -> Branch("jetIhit4",     treeVars.jetIhit4,              "jetIhit4[nJets][5]/I");
+  chain -> Branch("jetIhit3",     treeVars.jetIhit3,              "jetIhit3[nJets][5]/I");
+  chain -> Branch("jetIhit2",     treeVars.jetIhit2,              "jetIhit2[nJets][5]/I");
+  chain -> Branch("jetIhit1",     treeVars.jetIhit1,              "jetIhit1[nJets][5]/I");
 
   chain -> Branch("pdgId",        treeVars.pdgId,                 "pdgId[nGen]/I");
   chain -> Branch("momId",        treeVars.momId,                 "momId[nGen]/I");
@@ -155,6 +174,18 @@ void initializeBranches(TTree* chain, Ntuple& treeVars)
       treeVars.jetNEF[i] = 0 ;
       treeVars.jetNHF[i] = 0 ;
       treeVars.jetMEF[i] = 0 ;
+      for ( int j=0; j< 5; j++ ) {
+          treeVars.jetIso5[i][j] = 0 ;
+          treeVars.jetIso4[i][j] = 0 ;
+          treeVars.jetIso3[i][j] = 0 ;
+          treeVars.jetIso2[i][j] = 0 ;
+          treeVars.jetIso1[i][j] = 0 ;
+          treeVars.jetIhit5[i][j] = 0 ;
+          treeVars.jetIhit4[i][j] = 0 ;
+          treeVars.jetIhit3[i][j] = 0 ;
+          treeVars.jetIhit2[i][j] = 0 ;
+          treeVars.jetIhit1[i][j] = 0 ;
+      }	   
 
   }
   for ( int i=0; i< MAXMU; i++) {

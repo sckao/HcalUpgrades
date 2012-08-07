@@ -31,6 +31,16 @@ struct Ntuple
   float jetNEF[MAXJET];
   float jetNHF[MAXJET];
   float jetMEF[MAXJET];
+  float jetIso5[MAXJET][5];
+  float jetIso4[MAXJET][5];
+  float jetIso3[MAXJET][5];
+  float jetIso2[MAXJET][5];
+  float jetIso1[MAXJET][5];
+  int   jetIhit5[MAXJET][5];
+  int   jetIhit4[MAXJET][5];
+  int   jetIhit3[MAXJET][5];
+  int   jetIhit2[MAXJET][5];
+  int   jetIhit1[MAXJET][5];
 
   
   int   nMuons ;
