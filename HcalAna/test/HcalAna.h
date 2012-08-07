@@ -29,10 +29,11 @@
 
 #include "AnaInput.h"
 #include "hDraw.h"
+#include "Ntuple.h"
 
-#define MAXGEN 20
-#define MAXMU  10
-#define MAXJET 20
+//#define MAXGEN 20
+//#define MAXMU  10
+//#define MAXJET 20
 
 class HcalAna : public TObject {
 
@@ -55,20 +56,6 @@ private:
    int ProcessEvents ;
    vector<double> muonCuts ;
 
-   float muPx[MAXMU], muPy[MAXMU], muPz[MAXMU], muE[MAXMU] ;
-   float muIso1[MAXMU][5], muIso2[MAXMU][5], muIso3[MAXMU][5], muIso4[MAXMU][5], muIso5[MAXMU][5];   
-   int   muIhit1[MAXMU][5], muIhit2[MAXMU][5], muIhit3[MAXMU][5], muIhit4[MAXMU][5], muIhit5[MAXMU][5];   
-
-   int momId[MAXGEN] ;
-   float genPx[MAXGEN], genPy[MAXGEN], genPz[MAXGEN], genE[MAXGEN] ;
-   float genIso1[MAXGEN][5], genIso2[MAXGEN][5], genIso3[MAXGEN][5], genIso4[MAXGEN][5], genIso5[MAXGEN][5];
-   int   genIhit1[MAXGEN][5], genIhit2[MAXGEN][5], genIhit3[MAXGEN][5], genIhit4[MAXGEN][5], genIhit5[MAXGEN][5];
-   //float genVx[MAXGEN], genVy[MAXGEN], genVz[MAXGEN] ;
-
-   float jetPx[MAXJET],   jetPy[MAXJET], jetPz[MAXJET],  jetE[MAXJET] ;
-
-   int   nMuons, nJets, nGen ;
-
    TH1D* r_absIso[5] ;
    TH1D* r_relIso[5] ;
    TH1D* r_Ihits[5] ;
@@ -78,13 +65,26 @@ private:
    TH1D* w_absIso[5] ;
    TH1D* w_relIso[5] ;
    TH1D* w_Ihits[5] ;
+   TH1D* j_absIso[5] ;
+   TH1D* j_relIso[5] ;
+   TH1D* j_Ihits[5] ;
 
    double absiso_max ;
    double absiso_bound ;
+   double absiso_end ;
+   int    absiso_nbin ;
+
    double reliso_max ;
    double reliso_bound ;
+   double reliso_end ;
+   int    reliso_nbin ;
+
    int    isohit_max ;
    int    isohit_bound ;
+   double isohit_end ;
+   int    isohit_nbin ;
+
+   Ntuple leaves ;
 
    //ClassDef(HcalAna, 1);
 };
