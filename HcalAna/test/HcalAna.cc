@@ -138,6 +138,8 @@ void HcalAna::ReadTree( string dataName ) {
    j_relIso[3]  = new TH1D("j_relIso4", "relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
    j_relIso[4]  = new TH1D("j_relIso5", "relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
 
+   TH1D* bgRate  = new TH1D("bgRate", "Background Rate in different dR(0.1 ~ 0.5)", 20, 0, 20);
+
    int nEvt = 0 ;
    for ( int i=0; i< totalN ; i++ ) {
        if ( ProcessEvents > 0 && i > ( ProcessEvents - 1 ) ) break;
@@ -269,8 +271,20 @@ void HcalAna::ReadTree( string dataName ) {
        }
 
    } // end of event looping
+ 
+   // Calculate Background Ratio
+   double count = 0.5 ;
+   for (int idR = 0 ; idR < 5; idR++) {
+       for ( int idep = 0 ; idep < 4; idep++ ) {
+           double bgR = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
+           bgRate->Fill( count , bgR ) ;
+           count += 1. ;
+       }
+   }
 
+   // some basic information
    cout<<" drawing histograms "<<endl;
+   h_draw->Draw( bgRate, "BgRate", "4*dR(0 ~ 4) + depth( 1 ~ 4 ) ", "", "", 0.95, 1 ) ;
    h_draw->Draw( h_nMu,  "nMuons", "N of Muons",      "", "logY", 0.95, 1 );
    h_draw->Draw( h_muPt, "muonPt", "muon pt (GeV/c)", "", "logY", 0.95, 1 );
    h_draw->Draw( h_muE,  "muonE",  "muon E (GeV)",    "", "logY", 0.95, 1 );
@@ -286,60 +300,60 @@ void HcalAna::ReadTree( string dataName ) {
    h_draw->DrawNxM( 5, r_absIso[4], "abs. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "RecoRelIsolations", 1,5 );
-   h_draw->DrawNxM( 1, r_relIso[0],   "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, r_relIso[1],   "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[2],   "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, r_relIso[3],   "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, r_relIso[4],   "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, r_relIso[0], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, r_relIso[1], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_relIso[2], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, r_relIso[3], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, r_relIso[4], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "RecoIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, r_Ihits[0],   " N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, r_Ihits[1],   " N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[2],   " N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, r_Ihits[3],   " N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, r_Ihits[4],   " N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, r_Ihits[0],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, r_Ihits[1],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_Ihits[2],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, r_Ihits[3],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, r_Ihits[4],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "GenAbsIsolations", 1,5 );
-   h_draw->DrawNxM( 1, g_absIso[0],   "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[1],   "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, g_absIso[2],   "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, g_absIso[3],   "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, g_absIso[4],   "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, g_absIso[0], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_absIso[1], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, g_absIso[2], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, g_absIso[3], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, g_absIso[4], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "GenRelIsolations", 1,5 );
-   h_draw->DrawNxM( 1, g_relIso[0],   "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[1],   "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, g_relIso[2],   "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, g_relIso[3],   "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, g_relIso[4],   "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, g_relIso[0], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_relIso[1], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, g_relIso[2], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, g_relIso[3], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, g_relIso[4], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "GenIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, g_Ihits[0],   " N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[1],   " N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, g_Ihits[2],   " N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, g_Ihits[3],   " N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, g_Ihits[4],   " N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, g_Ihits[0],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_Ihits[1],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, g_Ihits[2],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, g_Ihits[3],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, g_Ihits[4],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "GenWAbsIsolations", 1,5 );
-   h_draw->DrawNxM( 1, w_absIso[0],   "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, w_absIso[1],   "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, w_absIso[2],   "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, w_absIso[3],   "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, w_absIso[4],   "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, w_absIso[0], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, w_absIso[1], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, w_absIso[2], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, w_absIso[3], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, w_absIso[4], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "GenWRelIsolations", 1,5 );
-   h_draw->DrawNxM( 1, w_relIso[0],   "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, w_relIso[1],   "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, w_relIso[2],   "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, w_relIso[3],   "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, w_relIso[4],   "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, w_relIso[0], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, w_relIso[1], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, w_relIso[2], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, w_relIso[3], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, w_relIso[4], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "GenWIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, w_Ihits[0],   " N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, w_Ihits[1],   " N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, w_Ihits[2],   " N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, w_Ihits[3],   " N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, w_Ihits[4],   " N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, w_Ihits[0],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, w_Ihits[1],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, w_Ihits[2],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, w_Ihits[3],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, w_Ihits[4],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "JetAbsIsoDeposit", 1,5 );
    h_draw->DrawNxM( 1, j_absIso[0], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
@@ -349,18 +363,18 @@ void HcalAna::ReadTree( string dataName ) {
    h_draw->DrawNxM( 5, j_absIso[4], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "JetRelIsoDeposit", 1,5 );
-   h_draw->DrawNxM( 1, j_relIso[0],   "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, j_relIso[1],   "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, j_relIso[2],   "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[3],   "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, j_relIso[4],   "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, j_relIso[0], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, j_relIso[1], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, j_relIso[2], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_relIso[3], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, j_relIso[4], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->CreateNxM( "JetIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, j_Ihits[0],   " N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, j_Ihits[1],   " N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, j_Ihits[2],   " N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[3],   " N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, j_Ihits[4],   " N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 1, j_Ihits[0],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, j_Ihits[1],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, j_Ihits[2],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_Ihits[3],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 5, j_Ihits[4],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
    h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
@@ -465,4 +479,28 @@ int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, i
      //return theAbsIso ;
      return theIsoHits ;
 }
+
+// depth : 0 ~ 4, 
+double HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
+
+    int bin1 = 1 + depth*( nbin/5 ) ;
+    int bin2= (depth+1)*( nbin/5 ) ; 
+    double totalS = hS->Integral( bin1, bin2 ) ;
+    double totalB = hB->Integral( bin1, bin2 ) ;
+    if ( totalS == (double)0 || totalB == (double)0 ) return -1 ;
+
+    double sR = 0 ;
+    double bR = 0 ;
+    int binx = bin1 ;
+    do {
+        double subS   = hS->Integral( bin1, binx ) ;
+        double subB   = hB->Integral( bin1, binx ) ;
+        sR = (double)( subS / totalS );
+        bR = (double)( subB / totalB );
+        binx++ ;
+    } while ( sR < 0.95 ) ;
+    
+    return bR ;
+}
+
 

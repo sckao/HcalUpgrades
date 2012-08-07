@@ -45,6 +45,7 @@ public:
    void ReadTree( string dataName );
    double IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset = 0. , double scale = 1. );
    int    IsoHits( string type, int mu_id, int depth, int dR_i, int offset = 0 , int scale = 1 ) ;
+   double BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth  );
 
 private:
 
