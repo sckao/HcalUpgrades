@@ -52,7 +52,7 @@ void hDraw::Draw( TH1D* h1, string plotName, string xTitle, string yTitle, strin
 
       if ( leg != NULL ) leg->Draw("sames") ;
 
-      if ( plotName != "" || plotName != " " ) {
+      if ( plotName.size() > 0 ) {
          TString plotname1 = hfolder + plotName + "."+plotType ;
          c1->Print( plotname1 );
          //if ( func1 != NULL ) func1 = NULL ;
@@ -73,7 +73,7 @@ void hDraw::DrawAppend( TH1D* h1, string plotName, float statY, int color, TLege
 
       if ( leg != NULL ) leg->Draw("sames") ;
 
-      if ( plotName != "" || plotName != " " ) {
+      if ( plotName.size() > 0 ) {
          TString plotname1 = hfolder + plotName + "."+plotType ;
          c1->Print( plotname1 );
          //if ( func1 != NULL ) func1 = NULL ;
@@ -171,7 +171,7 @@ void hDraw::FitNDraw( TH1D* h1, string plotName, string xTitle, string yTitle, s
 
       if ( leg != NULL ) leg->Draw("sames") ;
 
-      if ( plotName != "" || plotName != " " ) {
+      if ( plotName.size() > 0 ) {
          TString plotname1 = hfolder + plotName + "."+plotType ;
          c1->Print( plotname1 );
       }
@@ -194,7 +194,7 @@ void hDraw::FitNDrawAppend( TH1D* h1, string plotName, float statY, int color, T
 
       if ( leg != NULL ) leg->Draw("sames") ;
 
-      if ( plotName != "" || plotName != " " ) {
+      if ( plotName.size() > 0 ) {
          TString plotname1 = hfolder + plotName + "."+plotType ;
          c1->Print( plotname1 );
          if ( func1 != NULL ) func1 = NULL ;

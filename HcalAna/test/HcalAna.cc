@@ -53,16 +53,16 @@ void HcalAna::ReadTree( string dataName ) {
 
    reliso_max   = 5.5 ;
    reliso_bound = 6.0 ;
-   reliso_end   = 25 ;
-   reliso_nbin  = 250 ;
+   reliso_end   = 24 ;
+   reliso_nbin  = 240 ;
 
-   absiso_max   = 24.5 ;
-   absiso_bound = 25.0 ;
-   absiso_end   = 100 ;
-   absiso_nbin  = 500 ;
+   absiso_max   = 99. ;
+   absiso_bound = 100. ;
+   absiso_end   = 400 ;
+   absiso_nbin  = 400 ;
 
-   isohit_max   = 19 ;
-   isohit_bound = 20 ;
+   isohit_max   = 24 ;
+   isohit_bound = 25 ;
    isohit_end   = 100 ;
    isohit_nbin  = 100 ;
 
@@ -138,7 +138,9 @@ void HcalAna::ReadTree( string dataName ) {
    j_relIso[3]  = new TH1D("j_relIso4", "relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
    j_relIso[4]  = new TH1D("j_relIso5", "relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
 
-   TH1D* bgRate  = new TH1D("bgRate", "Background Rate in different dR(0.1 ~ 0.5)", 20, 0, 20);
+   TH1D* AbsBgRate  = new TH1D("AbsBgRate", "Background rate in 95% signal efficiency (Abs)", 20, 0, 20);
+   TH1D* RelBgRate  = new TH1D("RelBgRate", "Background rate in 95% signal efficiency (Rel)", 20, 0, 20);
+   TH1D* HitBgRate  = new TH1D("HitBgRate", "Background rate in 95% signal efficiency (Hit)", 20, 0, 20);
 
    int nEvt = 0 ;
    for ( int i=0; i< totalN ; i++ ) {
@@ -161,11 +163,12 @@ void HcalAna::ReadTree( string dataName ) {
            // looping thruogh 4 depths
            double theAbs = -1 ;
            double theRel = -1 ;
-           for ( int j=0; j<4 ; j++ ) {
+           for ( int j=0; j<3 ; j++ ) {
                // looping 5 different dR 
                //cout<<" Depth : "<< j+1 <<endl ;
                for ( int r=1; r < 6; ++r ) {
-                   double theAbsIso_ = IsoDeposit( "muon", k, j, r , 0., 1. ) ;
+                   //double theAbsIso_ = IsoDeposit( "muon", k, j, r ) ;
+                   double theAbsIso_ = IsoDeposit( j, "muon", k, r ) ;
                    double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                    double theRelIso_ = theAbsIso_ / mP4.Pt()   ;
                    double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -196,10 +199,10 @@ void HcalAna::ReadTree( string dataName ) {
            double theRel = -1 ;
            if ( abs( leaves.momId[k]) == 24 ) {
 
-              for ( int j=0; j<4 ; j++ ) {
+              for ( int j=0; j<3 ; j++ ) {
                   for ( int r=1; r < 6; r++ ) {
-                      double scale = ( j == 3 ) ? 1. : 1. ;
-                      double theAbsIso_ = IsoDeposit( "gen", k, j, r , 0., scale ) ;
+                      double theAbsIso_ = IsoDeposit( j, "gen", k, r ) ;
+                      //double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
                       double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                       double theRelIso_ = theAbsIso_ / gP4.Pt()   ;
                       double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -223,9 +226,10 @@ void HcalAna::ReadTree( string dataName ) {
               //cout<<" --------------- "<<endl ;
            } else {
 
-              for ( int j=0; j<4 ; j++ ) {
+              for ( int j=0; j<3 ; j++ ) {
                   for ( int r=1; r < 6; r++ ) {
-                      double theAbsIso_ = IsoDeposit( "gen", k, j, r , 0., 1. ) ;
+                      //double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
+                      double theAbsIso_ = IsoDeposit( j, "gen", k, r ) ;
                       double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                       double theRelIso_ = theAbsIso_ / gP4.Pt()   ;
                       double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -251,12 +255,13 @@ void HcalAna::ReadTree( string dataName ) {
        for ( int k =0; k< leaves.nJets ; k++) {
            TLorentzVector jP4 = TLorentzVector( leaves.jetPx[k], leaves.jetPy[k], leaves.jetPz[k], leaves.jetE[k] ) ;
 
-           // looping thruogh 4 depths
-           for ( int j=0; j<4 ; j++ ) {
+           // looping thruogh 4 depths or 3 different typies
+           for ( int j=0; j<3 ; j++ ) {
                // looping 5 different dR 
                //cout<<" Depth : "<< j+1 <<endl ;
                for ( int r=1; r < 6; ++r ) {
-                   double theAbsIso_ = IsoDeposit( "jet", k, j, r , 0., 1. ) ;
+                   double theAbsIso_ = IsoDeposit( j, "jet", k, r ) ;
+                   //double theAbsIso_ = IsoDeposit( "jet", k, j, r ) ;
                    double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                    double theRelIso_ = theAbsIso_ / jP4.Pt()   ;
                    double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -275,106 +280,123 @@ void HcalAna::ReadTree( string dataName ) {
    // Calculate Background Ratio
    double count = 0.5 ;
    for (int idR = 0 ; idR < 5; idR++) {
-       for ( int idep = 0 ; idep < 4; idep++ ) {
-           double bgR = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
-           bgRate->Fill( count , bgR ) ;
+       for ( int idep = 0 ; idep < 3; idep++ ) {
+           double bgR_a = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
+           double bgR_r = BgRatio( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
+           double bgR_h = BgRatio( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
+           AbsBgRate->Fill( count , bgR_a ) ;
+           RelBgRate->Fill( count , bgR_r ) ;
+           HitBgRate->Fill( count , bgR_h ) ;
            count += 1. ;
        }
    }
 
    // some basic information
    cout<<" drawing histograms "<<endl;
-   h_draw->Draw( bgRate, "BgRate", "4*dR(0 ~ 4) + depth( 1 ~ 4 ) ", "", "", 0.95, 1 ) ;
+   HitBgRate->SetMaximum(1.1) ;
+   h_draw->Draw(       HitBgRate, "", "5*dR(0 ~ 4) + depth( 1 ~ 3 ) ", "", "", 0.95, 1 ) ;
+   h_draw->DrawAppend( AbsBgRate, "",        0.75, 2 ) ;
+   h_draw->DrawAppend( RelBgRate, "BgRate",  0.55, 4 ) ;
+
    h_draw->Draw( h_nMu,  "nMuons", "N of Muons",      "", "logY", 0.95, 1 );
    h_draw->Draw( h_muPt, "muonPt", "muon pt (GeV/c)", "", "logY", 0.95, 1 );
    h_draw->Draw( h_muE,  "muonE",  "muon E (GeV)",    "", "logY", 0.95, 1 );
 
    // set histogram's attributions : axis, labelsize, tickLength, titleSize, titleOffset   
-   h_draw->SetHistoAtt("X", 0.1, 0.07, 0.1, 1. ) ;
+   h_draw->SetHistoAtt("X", 0.1, 0.07, 0.08, 1. ) ;
    h_draw->SetHistoAtt("Y", 0.1, 0.02, 0.1, 0 ) ;
-   h_draw->CreateNxM( "RecoAbsIsolations", 1,5 );
-   h_draw->DrawNxM( 1, r_absIso[0], "abs. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, r_absIso[1], "abs. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_absIso[2], "abs. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, r_absIso[3], "abs. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, r_absIso[4], "abs. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "RecoRelIsolations", 1,5 );
-   h_draw->DrawNxM( 1, r_relIso[0], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, r_relIso[1], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[2], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, r_relIso[3], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, r_relIso[4], "rel. Isolation for reco muon", "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "RecoIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, r_Ihits[0],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, r_Ihits[1],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[2],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, r_Ihits[3],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, r_Ihits[4],  "N of Isohits for reco muon", "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "GenAbsIsolations", 1,5 );
-   h_draw->DrawNxM( 1, g_absIso[0], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[1], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, g_absIso[2], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, g_absIso[3], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, g_absIso[4], "abs. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "GenRelIsolations", 1,5 );
-   h_draw->DrawNxM( 1, g_relIso[0], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[1], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, g_relIso[2], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, g_relIso[3], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, g_relIso[4], "rel. Isolation for gen muon", "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "GenIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, g_Ihits[0],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[1],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, g_Ihits[2],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, g_Ihits[3],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, g_Ihits[4],  "N of Isohits for gen muon", "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "GenWAbsIsolations", 1,5 );
+   h_draw->CreateNxM( "AbsIsoDR1", 1,4 );
    h_draw->DrawNxM( 1, w_absIso[0], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, w_absIso[1], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, w_absIso[2], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, w_absIso[3], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, w_absIso[4], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 2, g_absIso[0], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_absIso[0], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_absIso[0], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "GenWRelIsolations", 1,5 );
+   h_draw->CreateNxM( "AbsIsoDR2", 1,4 );
+   h_draw->DrawNxM( 1, w_absIso[1], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_absIso[1], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_absIso[1], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_absIso[1], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "AbsIsoDR3", 1,4 );
+   h_draw->DrawNxM( 1, w_absIso[2], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_absIso[2], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_absIso[2], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_absIso[2], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "AbsIsoDR4", 1,4 );
+   h_draw->DrawNxM( 1, w_absIso[3], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_absIso[3], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_absIso[3], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_absIso[3], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "AbsIsoDR5", 1,4 );
+   h_draw->DrawNxM( 1, w_absIso[4], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_absIso[4], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_absIso[4], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_absIso[4], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   // RelIso
+   h_draw->CreateNxM( "RelIsoDR1", 1,4 );
    h_draw->DrawNxM( 1, w_relIso[0], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, w_relIso[1], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, w_relIso[2], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, w_relIso[3], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, w_relIso[4], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->DrawNxM( 2, g_relIso[0], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_relIso[0], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_relIso[0], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "GenWIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, w_Ihits[0],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, w_Ihits[1],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, w_Ihits[2],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, w_Ihits[3],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, w_Ihits[4],  "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->CreateNxM( "RelIsoDR2", 1,4 );
+   h_draw->DrawNxM( 1, w_relIso[1], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_relIso[1], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_relIso[1], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_relIso[1], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "JetAbsIsoDeposit", 1,5 );
-   h_draw->DrawNxM( 1, j_absIso[0], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, j_absIso[1], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, j_absIso[2], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_absIso[3], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, j_absIso[4], "abs. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->CreateNxM( "RelIsoDR3", 1,4 );
+   h_draw->DrawNxM( 1, w_relIso[2], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_relIso[2], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_relIso[2], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_relIso[2], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "JetRelIsoDeposit", 1,5 );
-   h_draw->DrawNxM( 1, j_relIso[0], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, j_relIso[1], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, j_relIso[2], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[3], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, j_relIso[4], "rel. Isolation for reco jet", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->CreateNxM( "RelIsoDR4", 1,4 );
+   h_draw->DrawNxM( 1, w_relIso[3], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_relIso[3], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_relIso[3], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_relIso[3], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "JetIsoHits", 1,5 );
-   h_draw->DrawNxM( 1, j_Ihits[0],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, j_Ihits[1],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, j_Ihits[2],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[3],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 5, j_Ihits[4],  "N of Isohits for reco jet", "", "logY", 1, 0.1, 0.1, true );
+   h_draw->CreateNxM( "RelIsoDR5", 1,4 );
+   h_draw->DrawNxM( 1, w_relIso[4], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_relIso[4], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_relIso[4], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_relIso[4], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   // isohits
+   h_draw->CreateNxM( "IsoHitsDR1", 1,4 );
+   h_draw->DrawNxM( 1, w_Ihits[0], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_Ihits[0], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_Ihits[0], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_Ihits[0], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "IsoHitsDR2", 1,4 );
+   h_draw->DrawNxM( 1, w_Ihits[1], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_Ihits[1], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_Ihits[1], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_Ihits[1], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "IsoHitsDR3", 1,4 );
+   h_draw->DrawNxM( 1, w_Ihits[2], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_Ihits[2], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_Ihits[2], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_Ihits[2], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "IsoHitsDR4", 1,4 );
+   h_draw->DrawNxM( 1, w_Ihits[3], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_Ihits[3], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_Ihits[3], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_Ihits[3], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+
+   h_draw->CreateNxM( "IsoHitsDR5", 1,4 );
+   h_draw->DrawNxM( 1, w_Ihits[4], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 2, g_Ihits[4], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 3, r_Ihits[4], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
+   h_draw->DrawNxM( 4, j_Ihits[4], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
    h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
    h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
@@ -414,25 +436,25 @@ void HcalAna::ReadTree( string dataName ) {
 
 }  
 
-double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset, double scale ) { 
+double HcalAna::IsoDeposit( string Obj, int mu_id, int depth, int dR_i, double offset, double scale ) { 
 
      //absolute isolation
      double muIso = -1 ;
-     if ( strncasecmp( "muon", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+     if ( strncasecmp( "muon", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
         if ( dR_i == 1 )  muIso = leaves.muIso1[mu_id][depth] ;
 	if ( dR_i == 2 )  muIso = leaves.muIso2[mu_id][depth] ;
 	if ( dR_i == 3 )  muIso = leaves.muIso3[mu_id][depth] ;
 	if ( dR_i == 4 )  muIso = leaves.muIso4[mu_id][depth] ;
 	if ( dR_i == 5 )  muIso = leaves.muIso5[mu_id][depth] ;
      }
-     if ( strncasecmp( "gen", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+     if ( strncasecmp( "gen", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
         if ( dR_i == 1 )  muIso = leaves.genIso1[mu_id][depth] ;
 	if ( dR_i == 2 )  muIso = leaves.genIso2[mu_id][depth] ;
 	if ( dR_i == 3 )  muIso = leaves.genIso3[mu_id][depth] ;
 	if ( dR_i == 4 )  muIso = leaves.genIso4[mu_id][depth] ;
 	if ( dR_i == 5 )  muIso = leaves.genIso5[mu_id][depth] ;
      }
-     if ( strncasecmp( "jet", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+     if ( strncasecmp( "jet", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
         if ( dR_i == 1 )  muIso = leaves.jetIso1[mu_id][depth] ;
 	if ( dR_i == 2 )  muIso = leaves.jetIso2[mu_id][depth] ;
 	if ( dR_i == 3 )  muIso = leaves.jetIso3[mu_id][depth] ;
@@ -445,6 +467,112 @@ double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double 
      //if ( scale != 1. ) cout <<" muIso: "<< muIso << " scaled by "<< scale <<endl ;
      //return theAbsIso ;
      return theAbsIso ;
+}
+
+// type 0: All , 1: Maximum, 2: Residual 
+// type 0: All , 1: Minimum, 2: Residual 
+double HcalAna::IsoDeposit( int type, string Obj, int mu_id, int dR_i, double offset, double scale ) { 
+
+     //absolute isolation
+     double iso_min = 9999 ;
+     double iso_max = 0 ;
+     double iso_all = 0 ;
+     double iso_res = 0 ;
+     double iso_    = 0 ;
+     int jj = 0 ;
+     if ( strncasecmp( "muon", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
+        for ( int j=0; j< 4; j++) {
+            if ( dR_i == 1 ) iso_ = leaves.muIso1[mu_id][j] ;
+            if ( dR_i == 2 ) iso_ = leaves.muIso2[mu_id][j] ;
+            if ( dR_i == 3 ) iso_ = leaves.muIso3[mu_id][j] ;
+            if ( dR_i == 4 ) iso_ = leaves.muIso4[mu_id][j] ;
+            if ( dR_i == 5 ) iso_ = leaves.muIso5[mu_id][j] ;
+            if ( iso_ > 0 ) jj++ ;
+	    iso_max = ( iso_ > iso_max ) ? iso_ : iso_max ;
+	    iso_min = ( iso_ < iso_min && iso_ > 0 ) ? iso_ : iso_min ;
+	    iso_all += iso_ ;
+        }
+        //iso_res = iso_all - iso_max ;
+        iso_res = iso_all - (jj*iso_min) ;
+     }
+     if ( strncasecmp( "gen", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
+        for ( int j=0; j< 4; j++) {
+            if ( dR_i == 1 ) iso_ = leaves.genIso1[mu_id][j] ;
+            if ( dR_i == 2 ) iso_ = leaves.genIso2[mu_id][j] ;
+            if ( dR_i == 3 ) iso_ = leaves.genIso3[mu_id][j] ;
+            if ( dR_i == 4 ) iso_ = leaves.genIso4[mu_id][j] ;
+            if ( dR_i == 5 ) iso_ = leaves.genIso5[mu_id][j] ;
+            if ( iso_ > 0 ) jj++ ;
+	    iso_max = ( iso_ > iso_max ) ? iso_ : iso_max ;
+	    iso_min = ( iso_ < iso_min && iso_ > 0 ) ? iso_ : iso_min ;
+	    iso_all += iso_ ;
+        }
+        //iso_res = iso_all - iso_max ;
+        iso_res = iso_all - (jj*iso_min) ;
+     }
+     if ( strncasecmp( "jet", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
+        for ( int j=0; j< 4; j++) {
+            if ( dR_i == 1 ) iso_ = leaves.jetIso1[mu_id][j] ;
+            if ( dR_i == 2 ) iso_ = leaves.jetIso2[mu_id][j] ;
+            if ( dR_i == 3 ) iso_ = leaves.jetIso3[mu_id][j] ;
+            if ( dR_i == 4 ) iso_ = leaves.jetIso4[mu_id][j] ;
+            if ( dR_i == 5 ) iso_ = leaves.jetIso5[mu_id][j] ;
+            if ( iso_ > 0 ) jj++ ;
+	    iso_max = ( iso_ > iso_max ) ? iso_ : iso_max ;
+	    iso_min = ( iso_ < iso_min && iso_ > 0 ) ? iso_ : iso_min ;
+	    iso_all += iso_ ;
+        }
+        //iso_res = iso_all - iso_max ;
+        iso_res = iso_all - (jj*iso_min) ;
+     }
+     double theIso = -1 ;
+     if ( type == 0 ) theIso = iso_all ;
+     //if ( type == 1 ) theIso = iso_max ;
+     if ( type == 1 ) theIso = iso_min ;
+     if ( type == 2 ) theIso = iso_res ;
+
+     double theAbsIso  = ( theIso*scale ) +  offset  ;
+     return theAbsIso ;
+}
+
+double HcalAna::InclusiveIsoDeposit( string Obj, int depth, int mu_id, int dR_i, double offset, double scale ) { 
+
+     //absolute isolation
+     double isoA = 0 ;
+     double iso_ = 0 ;
+     if ( strncasecmp( "muon", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
+        for ( int j=3; j >= 0; j--) {
+            if ( dR_i == 1 ) iso_ = leaves.muIso1[mu_id][j] ;
+            if ( dR_i == 2 ) iso_ = leaves.muIso2[mu_id][j] ;
+            if ( dR_i == 3 ) iso_ = leaves.muIso3[mu_id][j] ;
+            if ( dR_i == 4 ) iso_ = leaves.muIso4[mu_id][j] ;
+            if ( dR_i == 5 ) iso_ = leaves.muIso5[mu_id][j] ;
+	    if ( j <  depth ) isoA += iso_ ;
+        }
+     }
+     if ( strncasecmp( "gen", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
+        for ( int j=3; j >= 0; j--) {
+            if ( dR_i == 1 ) iso_ = leaves.genIso1[mu_id][j] ;
+            if ( dR_i == 2 ) iso_ = leaves.genIso2[mu_id][j] ;
+            if ( dR_i == 3 ) iso_ = leaves.genIso3[mu_id][j] ;
+            if ( dR_i == 4 ) iso_ = leaves.genIso4[mu_id][j] ;
+            if ( dR_i == 5 ) iso_ = leaves.genIso5[mu_id][j] ;
+	    if ( j <  depth ) isoA += iso_ ;
+        }
+     }
+     if ( strncasecmp( "jet", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
+        for ( int j=3; j >= 0; j--) {
+            if ( dR_i == 1 ) iso_ = leaves.jetIso1[mu_id][j] ;
+            if ( dR_i == 2 ) iso_ = leaves.jetIso2[mu_id][j] ;
+            if ( dR_i == 3 ) iso_ = leaves.jetIso3[mu_id][j] ;
+            if ( dR_i == 4 ) iso_ = leaves.jetIso4[mu_id][j] ;
+            if ( dR_i == 5 ) iso_ = leaves.jetIso5[mu_id][j] ;
+	    if ( j <  depth ) isoA += iso_ ;
+        }
+     }
+
+     double theIso  = ( isoA*scale ) +  offset  ;
+     return theIso ;
 }
 
 int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, int scale ) { 
@@ -483,10 +611,11 @@ int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, i
 // depth : 0 ~ 4, 
 double HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
 
-    int bin1 = 1 + depth*( nbin/5 ) ;
-    int bin2= (depth+1)*( nbin/5 ) ; 
+    int bin1 = 1 + depth*( nbin/4 ) ;
+    int bin2= (depth+1)*( nbin/4 ) ; 
     double totalS = hS->Integral( bin1, bin2 ) ;
     double totalB = hB->Integral( bin1, bin2 ) ;
+
     if ( totalS == (double)0 || totalB == (double)0 ) return -1 ;
 
     double sR = 0 ;
@@ -495,10 +624,12 @@ double HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     do {
         double subS   = hS->Integral( bin1, binx ) ;
         double subB   = hB->Integral( bin1, binx ) ;
-        sR = (double)( subS / totalS );
-        bR = (double)( subB / totalB );
+        sR =  subS / totalS ;
+        bR =  subB / totalB ;
         binx++ ;
     } while ( sR < 0.95 ) ;
+    //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
+    //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
     return bR ;
 }

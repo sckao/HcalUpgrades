@@ -7,15 +7,15 @@
 RootFiles = rootfiles/
 
 # Folder to store results
-Path = SLHC_tt/
+Path = SLHC_tt_1/
 
 # plot type : png / gif / eps / jpg / pdf 
 PlotType = png
 
 # Files , '+' is the flag for TChain 
 TheData = ( data+ )
-#dataChain = ( shcal_mixtest )
-dataChain = ( shcal_tt_0, shcal_tt_2 )
+dataChain = ( shcal_tt_1 )
+#dataChain = ( shcal_tt_0, shcal_tt_2 )
 #dataChain = ( shcal_tt_test )
 
 ProcessEvents = -1
