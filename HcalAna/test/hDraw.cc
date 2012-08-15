@@ -16,6 +16,7 @@ hDraw::hDraw( string datacardfile ){
 
   func1 = NULL ;
 
+  StatBoxOn = true ;
 }
 
 hDraw::~hDraw(){
@@ -35,12 +36,15 @@ void hDraw::Draw( TH1D* h1, string plotName, string xTitle, string yTitle, strin
       c1->SetFillColor(10);
       c1->SetLogy(0);
 
-      gStyle->SetOptStat("eoumi");
       if ( strncasecmp( "logY", logY.c_str(), logY.size() ) ==0 && logY.size() > 0 ) c1->SetLogy() ;
 
-      gStyle->SetStatY( statY  );
-      gStyle->SetStatTextColor( color );
-
+      if ( StatBoxOn ) {
+         gStyle->SetOptStat("eoumi");
+         gStyle->SetStatY( statY  );
+         gStyle->SetStatTextColor( color );
+      } else {
+         gStyle->SetOptStat("") ;
+      } 
 
       h1->GetXaxis()->SetTitle( xTitle.c_str() );
       h1->GetYaxis()->SetTitle( yTitle.c_str() );
@@ -87,7 +91,11 @@ void hDraw::CreateNxM( string plotName , int N, int M ) {
       c2->SetFillColor(10);
       c2->Divide(N, M) ;
 
-      gStyle->SetOptStat("eroumi");
+      if ( StatBoxOn ) {
+         gStyle->SetOptStat("eroumi");
+      } else {
+         gStyle->SetOptStat("") ;
+      } 
 
       plotname2 = hfolder + plotName + "."+plotType ;
 }
@@ -102,7 +110,8 @@ void hDraw::DrawNxM( int id, TH1D* h1, string xTitle, string yTitle, string logY
       SetHistoAtt( h1 ) ;
       gStyle->SetStatFontSize( statFontSize ) ;
       gStyle->SetTitleFontSize( titleFontSize ) ;
-      gStyle->SetStatTextColor( color );
+      if ( StatBoxOn )  gStyle->SetStatTextColor( color );
+      
       h1->SetLineColor( color ) ;
 
       //h1->GetXaxis()->SetLabelSize( 0.08 );
@@ -112,6 +121,23 @@ void hDraw::DrawNxM( int id, TH1D* h1, string xTitle, string yTitle, string logY
 
       h1->Draw() ;
       c2->Update();
+
+      if ( close ) {
+         c2->Print( plotname2 );
+      }
+}
+
+void hDraw::DrawNxM( int id, TH1D* h1, int color, TLegend* leg, bool close  ) {
+
+      c2->cd( id );
+
+      if ( StatBoxOn ) gStyle->SetStatTextColor( color );
+      h1->SetLineColor( color ) ;
+
+      h1->DrawCopy("sames") ;
+      c2->Update();
+
+      if ( leg != NULL ) leg->Draw("sames") ;
 
       if ( close ) {
          c2->Print( plotname2 );
@@ -575,3 +601,14 @@ void hDraw::SetHistoAtt( TH2D* h2 ){
 	h2->GetYaxis()->SetTitleSize( titleSize_y );
 	h2->GetYaxis()->SetTitleOffset( titleOffset_y );
 }
+
+void hDraw::SetPlotStyle( bool StatBoxOn_, float tMargin, float bMargin, float lMargin, float rMargin ) {
+
+     StatBoxOn = StatBoxOn_ ;
+     gStyle->SetPadTopMargin( tMargin );   
+     gStyle->SetPadBottomMargin( bMargin );
+     gStyle->SetPadLeftMargin( lMargin ); 
+     gStyle->SetPadRightMargin( rMargin );  
+
+}
+

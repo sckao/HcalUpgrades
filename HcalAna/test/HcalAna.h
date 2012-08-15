@@ -44,11 +44,13 @@ public:
    
    void ReadTree( string dataName );
 
+   /*
    double IsoDeposit( string Obj, int mu_id, int depth, int dR_i, double offset = 0. , double scale = 1. );
-   double IsoDeposit( int type, string Obj, int mu_id, int dR_i, double offset = 0., double scale = 1. ) ;
-   double InclusiveIsoDeposit( string Obj, int depth, int mu_id, int dR_i, double offset = 0., double scale = 1.) ;
+   double IsoDeposit1( int type, string Obj, int mu_id, int dR_i, double offset = 0., double scale = 1. ) ;
+   double InclusiveIsoDeposit( string Obj, int mu_id, int depth,  int dR_i, double offset = 0., double scale = 1.) ;
+   */
 
-
+   double IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset = 0 , double scale = 1 ) ;
    int    IsoHits( string type, int mu_id, int depth, int dR_i, int offset = 0 , int scale = 1 ) ;
    double BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth  );
 
@@ -59,6 +61,7 @@ private:
 
    string hfolder ;
    string plotType ;
+   int isoMethod ;
    int ProcessEvents ;
    vector<double> muonCuts ;
 
@@ -74,6 +77,10 @@ private:
    TH1D* j_absIso[5] ;
    TH1D* j_relIso[5] ;
    TH1D* j_Ihits[5] ;
+
+   TH1D* AbsBgRate[4]  ;
+   TH1D* RelBgRate[4]  ;
+   TH1D* HitBgRate[4]  ;
 
    double absiso_max ;
    double absiso_bound ;

@@ -38,6 +38,7 @@ class hDraw {
 
   void CreateNxM( string plotName , int N, int M ) ;
   void DrawNxM( int id, TH1D* h1, string xTitle, string yTitle, string logY, int color = 1, float titleFontSize =0.05, float statFontSize = 0.05, bool close = true ) ;
+  void DrawNxM( int id, TH1D* h1, int color, TLegend* leg = NULL, bool close = true ) ;
   void DrawNxM( int id, TH2D* h2, string xTitle, string yTitle, string logZ, int nColor = 5, float titleFontSize =0.05, float statFontSize = 0.05, bool close = true ) ;
 
   void FitNDraw( TH1D* h1, string plotName, string xTitle, string yTitle, string logY, float statY, int color = 1, TLegend* leg=NULL ) ;
@@ -57,6 +58,7 @@ class hDraw {
   void SetHistoAtt( string axis, float labelSize, float tickLength, float titleSize, float titleOffset ) ;
   void SetHistoAtt( TH1D* h1 ) ;
   void SetHistoAtt( TH2D* h2 ) ;
+  void SetPlotStyle( bool StatBoxON_, float tMargin=0.1 , float bMargin=0.1 , float lMargin=0.1 , float rMargin=0.1 ) ;
 
   private:
 
@@ -87,6 +89,8 @@ class hDraw {
   float titleSize_y ;
   float titleOffset_y ;
   //string axis_ ;
+
+  bool StatBoxOn ;
 
 };
 

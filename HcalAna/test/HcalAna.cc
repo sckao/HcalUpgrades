@@ -9,6 +9,8 @@ HcalAna::HcalAna( string datacardfile ){
   Input->GetParameters("Path",          &hfolder ) ; 
   Input->GetParameters("ProcessEvents", &ProcessEvents ) ; 
   Input->GetParameters("MuonCuts",      &muonCuts ) ; 
+  Input->GetParameters("IsoMethod",     &isoMethod ) ; 
+  
 
 }
 
@@ -28,10 +30,14 @@ void HcalAna::ReadTree( string dataName ) {
 
    int totalN = tr->GetEntries();
    cout<<" from  "<< dataName <<" total entries = "<< totalN <<" Process "<< ProcessEvents <<endl;
+   if ( isoMethod == 0 ) cout <<" Iso Deposit from each layer "<<endl ;
+   if ( isoMethod == 1 ) cout <<" Iso Deposit from min/max layer "<<endl ;
+   if ( isoMethod == 2 ) cout <<" Iso Deposit from inclusive layers "<<endl ;
 
-   TH1D* h_nMu   = new TH1D("h_nMu",  " number of reco Muons ", 15, 0, 15 );
-   TH1D* h_muPt  = new TH1D("h_muPt", " Muon Pt distribution ", 50, 0, 250 );
-   TH1D* h_muE   = new TH1D("h_muE",  " Muon E distribution  ", 50, 0, 500 );
+   TH1D* h_nMu   = new TH1D("h_nMu",   " number of reco Muons ", 15, 0, 15 );
+   TH1D* h_muE   = new TH1D("h_muE",   " Muon E distribution  ", 50, 0, 500 );
+   TH1D* h_muPt  = new TH1D("h_muPt",  " Muon Pt distribution ", 50, 0, 250 );
+   TH1D* h_JetPt = new TH1D("h_JetPt", " Jet Pt distribution  ", 50, 0, 500 );
 
    TH2D* g_Pt_relIso5 = new TH2D("g_Pt_relIso5", "gen muon Pt vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
    TH2D* g_E_relIso5  = new TH2D("g_E_relIso5",  "gen muon E vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
@@ -61,10 +67,10 @@ void HcalAna::ReadTree( string dataName ) {
    absiso_end   = 400 ;
    absiso_nbin  = 400 ;
 
-   isohit_max   = 24 ;
-   isohit_bound = 25 ;
-   isohit_end   = 100 ;
-   isohit_nbin  = 100 ;
+   isohit_max   = 49 ;
+   isohit_bound = 50 ;
+   isohit_end   = 200 ;
+   isohit_nbin  = 200 ;
 
    r_Ihits[0]  = new TH1D("r_Ihits1", "nhits in dR < 0.1 ", isohit_nbin, 0, isohit_end);
    r_Ihits[1]  = new TH1D("r_Ihits2", "nhits in dR < 0.2 ", isohit_nbin, 0, isohit_end);
@@ -138,9 +144,25 @@ void HcalAna::ReadTree( string dataName ) {
    j_relIso[3]  = new TH1D("j_relIso4", "relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
    j_relIso[4]  = new TH1D("j_relIso5", "relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
 
-   TH1D* AbsBgRate  = new TH1D("AbsBgRate", "Background rate in 95% signal efficiency (Abs)", 20, 0, 20);
-   TH1D* RelBgRate  = new TH1D("RelBgRate", "Background rate in 95% signal efficiency (Rel)", 20, 0, 20);
-   TH1D* HitBgRate  = new TH1D("HitBgRate", "Background rate in 95% signal efficiency (Hit)", 20, 0, 20);
+   AbsBgRate[0]  = new TH1D("AbsBgRate1", "Background rate in 95% signal efficiency (Abs), Depth_1", 5, 0., 0.5);
+   RelBgRate[0]  = new TH1D("RelBgRate1", "Background rate in 95% signal efficiency (Rel), Depth_1", 5, 0., 0.5);
+   HitBgRate[0]  = new TH1D("HitBgRate1", "Background rate in 95% signal efficiency (Hit), Depth_1", 5, 0., 0.5);
+
+   AbsBgRate[1]  = new TH1D("AbsBgRate2", "Background rate in 95% signal efficiency (Abs), Depth_2", 5, 0., 0.5);
+   RelBgRate[1]  = new TH1D("RelBgRate2", "Background rate in 95% signal efficiency (Rel), Depth_2", 5, 0., 0.5);
+   HitBgRate[1]  = new TH1D("HitBgRate2", "Background rate in 95% signal efficiency (Hit), Depth_2", 5, 0., 0.5);
+
+   AbsBgRate[2]  = new TH1D("AbsBgRate3", "Background rate in 95% signal efficiency (Abs), Depth_3", 5, 0., 0.5);
+   RelBgRate[2]  = new TH1D("RelBgRate3", "Background rate in 95% signal efficiency (Rel), Depth_3", 5, 0., 0.5);
+   HitBgRate[2]  = new TH1D("HitBgRate3", "Background rate in 95% signal efficiency (Hit), Depth_3", 5, 0., 0.5);
+
+   AbsBgRate[3]  = new TH1D("AbsBgRate4", "Background rate in 95% signal efficiency (Abs), Depth_4", 5, 0., 0.5);
+   RelBgRate[3]  = new TH1D("RelBgRate4", "Background rate in 95% signal efficiency (Rel), Depth_4", 5, 0., 0.5);
+   HitBgRate[3]  = new TH1D("HitBgRate4", "Background rate in 95% signal efficiency (Hit), Depth_4", 5, 0., 0.5);
+
+   //AbsBgRate[4]  = new TH1D("AbsBgRate5", "Background rate in 95% signal efficiency (Abs), Depth_5", 5, 0., 0.5);
+   //RelBgRate[4]  = new TH1D("RelBgRate5", "Background rate in 95% signal efficiency (Rel), Depth_5", 5, 0., 0.5);
+   //HitBgRate[4]  = new TH1D("HitBgRate5", "Background rate in 95% signal efficiency (Hit), Depth_5", 5, 0., 0.5);
 
    int nEvt = 0 ;
    for ( int i=0; i< totalN ; i++ ) {
@@ -167,8 +189,7 @@ void HcalAna::ReadTree( string dataName ) {
                // looping 5 different dR 
                //cout<<" Depth : "<< j+1 <<endl ;
                for ( int r=1; r < 6; ++r ) {
-                   //double theAbsIso_ = IsoDeposit( "muon", k, j, r ) ;
-                   double theAbsIso_ = IsoDeposit( j, "muon", k, r ) ;
+                   double theAbsIso_ = IsoDeposit( "muon", k, j, r ) ;
                    double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                    double theRelIso_ = theAbsIso_ / mP4.Pt()   ;
                    double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -201,8 +222,8 @@ void HcalAna::ReadTree( string dataName ) {
 
               for ( int j=0; j<3 ; j++ ) {
                   for ( int r=1; r < 6; r++ ) {
-                      double theAbsIso_ = IsoDeposit( j, "gen", k, r ) ;
-                      //double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
+
+                      double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
                       double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                       double theRelIso_ = theAbsIso_ / gP4.Pt()   ;
                       double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -228,8 +249,8 @@ void HcalAna::ReadTree( string dataName ) {
 
               for ( int j=0; j<3 ; j++ ) {
                   for ( int r=1; r < 6; r++ ) {
-                      //double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
-                      double theAbsIso_ = IsoDeposit( j, "gen", k, r ) ;
+
+                      double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
                       double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                       double theRelIso_ = theAbsIso_ / gP4.Pt()   ;
                       double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -254,14 +275,15 @@ void HcalAna::ReadTree( string dataName ) {
        // get jet hcal deposit      
        for ( int k =0; k< leaves.nJets ; k++) {
            TLorentzVector jP4 = TLorentzVector( leaves.jetPx[k], leaves.jetPy[k], leaves.jetPz[k], leaves.jetE[k] ) ;
+           h_JetPt->Fill( jP4.Pt() ) ;
 
            // looping thruogh 4 depths or 3 different typies
            for ( int j=0; j<3 ; j++ ) {
                // looping 5 different dR 
                //cout<<" Depth : "<< j+1 <<endl ;
                for ( int r=1; r < 6; ++r ) {
-                   double theAbsIso_ = IsoDeposit( j, "jet", k, r ) ;
-                   //double theAbsIso_ = IsoDeposit( "jet", k, j, r ) ;
+
+		   double theAbsIso_ = IsoDeposit( "jet", k, j, r ) ;
                    double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
                    double theRelIso_ = theAbsIso_ / jP4.Pt()   ;
                    double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
@@ -278,34 +300,53 @@ void HcalAna::ReadTree( string dataName ) {
    } // end of event looping
  
    // Calculate Background Ratio
-   double count = 0.5 ;
-   for (int idR = 0 ; idR < 5; idR++) {
-       for ( int idep = 0 ; idep < 3; idep++ ) {
+   string hTitle_BgRate[3] = { "Depth 1", "Depth 2", "Depth 3" };
+   // set histogram's attributions : axis, labelsize(0.05), tickLength(0.03), titleSize(0.04), titleOffset(1)
+   h_draw->SetHistoAtt("X", 0.1, 0.06, 0.08, 1. ) ;
+   h_draw->SetHistoAtt("Y", 0.1, 0.02, 0.1, 0 ) ;
+   h_draw->SetPlotStyle( false );
+   h_draw->CreateNxM( "BgRate", 1,3 );
+   TLegend* leg1  = new TLegend(.72, .7, .9, .9 );
+   for (int idep = 0 ; idep < 3; idep++) {
+       double count = 0.05 ;
+       for ( int idR = 0 ; idR < 5; idR++ ) {
            double bgR_a = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
            double bgR_r = BgRatio( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
            double bgR_h = BgRatio( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
-           AbsBgRate->Fill( count , bgR_a ) ;
-           RelBgRate->Fill( count , bgR_r ) ;
-           HitBgRate->Fill( count , bgR_h ) ;
-           count += 1. ;
+           AbsBgRate[idep]->Fill( count , bgR_a ) ;
+           RelBgRate[idep]->Fill( count , bgR_r ) ;
+           HitBgRate[idep]->Fill( count , bgR_h ) ;
+           count += 0.1 ;
        }
+
+       leg1->Clear();
+       leg1->AddEntry( HitBgRate[idep], " Hit  ", "L" ) ;
+       leg1->AddEntry( AbsBgRate[idep], "AbsIso", "L" ) ;
+       leg1->AddEntry( RelBgRate[idep], "RelIso", "L" ) ;
+
+       HitBgRate[idep]->SetMaximum(1.1) ;
+       HitBgRate[idep]->SetMinimum(0.3) ;
+       HitBgRate[idep]->SetTitle( hTitle_BgRate[idep].c_str() ) ;
+
+       bool printplot = ( idep == 2 ) ? true : false ;
+       h_draw->DrawNxM( idep+1, HitBgRate[idep], "dR(0.1 ~ 0.5)  ", "", "", 1, 0.1, 0.1, false );
+       h_draw->DrawNxM( idep+1, AbsBgRate[idep],  2, NULL, false );
+       h_draw->DrawNxM( idep+1, RelBgRate[idep],  4, leg1, printplot );
    }
+   delete leg1 ;
 
    // some basic information
    cout<<" drawing histograms "<<endl;
-   HitBgRate->SetMaximum(1.1) ;
-   h_draw->Draw(       HitBgRate, "", "5*dR(0 ~ 4) + depth( 1 ~ 3 ) ", "", "", 0.95, 1 ) ;
-   h_draw->DrawAppend( AbsBgRate, "",        0.75, 2 ) ;
-   h_draw->DrawAppend( RelBgRate, "BgRate",  0.55, 4 ) ;
-
+   h_draw->SetPlotStyle( true );
    h_draw->Draw( h_nMu,  "nMuons", "N of Muons",      "", "logY", 0.95, 1 );
-   h_draw->Draw( h_muPt, "muonPt", "muon pt (GeV/c)", "", "logY", 0.95, 1 );
+   h_draw->Draw( h_muPt, "muonPt", "muon P_{T} (GeV/c)", "", "logY", 0.95, 1 );
+   h_draw->Draw( h_JetPt, "jetPt", "jet P_{T} (GeV/c)", "", "logY", 0.95, 1 );
    h_draw->Draw( h_muE,  "muonE",  "muon E (GeV)",    "", "logY", 0.95, 1 );
 
-   // set histogram's attributions : axis, labelsize, tickLength, titleSize, titleOffset   
+   // set histogram's attributions : axis, labelsize(0.05), tickLength(0.03), titleSize(0.04), titleOffset(1)
    h_draw->SetHistoAtt("X", 0.1, 0.07, 0.08, 1. ) ;
    h_draw->SetHistoAtt("Y", 0.1, 0.02, 0.1, 0 ) ;
-
+   h_draw->SetPlotStyle( true, 0.1, 0.12, 0.1, 0.1 ) ;
    h_draw->CreateNxM( "AbsIsoDR1", 1,4 );
    h_draw->DrawNxM( 1, w_absIso[0], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
    h_draw->DrawNxM( 2, g_absIso[0], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
@@ -434,175 +475,93 @@ void HcalAna::ReadTree( string dataName ) {
    h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
    h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
 
-}  
+} 
+ 
+double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset, double scale ) { 
 
-double HcalAna::IsoDeposit( string Obj, int mu_id, int depth, int dR_i, double offset, double scale ) { 
+   //absolute isolation
+   double IsoA   =  0 ;
+   double Iso_   =  0 ;
+   double minIso =  999 ;
+   for ( int j=3; j >= 0; j--) {
+       if ( isoMethod == 0 && j != depth ) continue ;
+       if ( isoMethod == 2 && j  < depth ) continue ;
+       if ( isoMethod == 3 && j  > depth ) continue ;
 
-     //absolute isolation
-     double muIso = -1 ;
-     if ( strncasecmp( "muon", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        if ( dR_i == 1 )  muIso = leaves.muIso1[mu_id][depth] ;
-	if ( dR_i == 2 )  muIso = leaves.muIso2[mu_id][depth] ;
-	if ( dR_i == 3 )  muIso = leaves.muIso3[mu_id][depth] ;
-	if ( dR_i == 4 )  muIso = leaves.muIso4[mu_id][depth] ;
-	if ( dR_i == 5 )  muIso = leaves.muIso5[mu_id][depth] ;
-     }
-     if ( strncasecmp( "gen", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        if ( dR_i == 1 )  muIso = leaves.genIso1[mu_id][depth] ;
-	if ( dR_i == 2 )  muIso = leaves.genIso2[mu_id][depth] ;
-	if ( dR_i == 3 )  muIso = leaves.genIso3[mu_id][depth] ;
-	if ( dR_i == 4 )  muIso = leaves.genIso4[mu_id][depth] ;
-	if ( dR_i == 5 )  muIso = leaves.genIso5[mu_id][depth] ;
-     }
-     if ( strncasecmp( "jet", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        if ( dR_i == 1 )  muIso = leaves.jetIso1[mu_id][depth] ;
-	if ( dR_i == 2 )  muIso = leaves.jetIso2[mu_id][depth] ;
-	if ( dR_i == 3 )  muIso = leaves.jetIso3[mu_id][depth] ;
-	if ( dR_i == 4 )  muIso = leaves.jetIso4[mu_id][depth] ;
-	if ( dR_i == 5 )  muIso = leaves.jetIso5[mu_id][depth] ;
-     }
+       if ( strncasecmp( "muon", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+          if ( dR_i == 1 )  Iso_ = leaves.muIso1[mu_id][j] ;
+	  if ( dR_i == 2 )  Iso_ = leaves.muIso2[mu_id][j] ;
+	  if ( dR_i == 3 )  Iso_ = leaves.muIso3[mu_id][j] ;
+	  if ( dR_i == 4 )  Iso_ = leaves.muIso4[mu_id][j] ;
+	  if ( dR_i == 5 )  Iso_ = leaves.muIso5[mu_id][j] ;
+       }
+       if ( strncasecmp( "gen", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+          if ( dR_i == 1 )  Iso_ = leaves.genIso1[mu_id][j] ;
+	  if ( dR_i == 2 )  Iso_ = leaves.genIso2[mu_id][j] ;
+	  if ( dR_i == 3 )  Iso_ = leaves.genIso3[mu_id][j] ;
+	  if ( dR_i == 4 )  Iso_ = leaves.genIso4[mu_id][j] ;
+	  if ( dR_i == 5 )  Iso_ = leaves.genIso5[mu_id][j] ;
+       }
+       if ( strncasecmp( "jet", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+          if ( dR_i == 1 )  Iso_ = leaves.jetIso1[mu_id][j] ;
+	  if ( dR_i == 2 )  Iso_ = leaves.jetIso2[mu_id][j] ;
+	  if ( dR_i == 3 )  Iso_ = leaves.jetIso3[mu_id][j] ;
+	  if ( dR_i == 4 )  Iso_ = leaves.jetIso4[mu_id][j] ;
+	  if ( dR_i == 5 )  Iso_ = leaves.jetIso5[mu_id][j] ;
+       }
+       if ( isoMethod == 0 ) IsoA  = Iso_ ;
+       if ( isoMethod  > 0 ) IsoA += Iso_ ;
+       if ( isoMethod == 1 && Iso_ < minIso && Iso_ > 0. )  minIso = Iso_ ;
+   }
+   if ( isoMethod == 1 && depth == 1 ) IsoA = minIso ;
+   if ( isoMethod == 1 && depth == 2 ) IsoA = IsoA - minIso ;
 
-     //double theAbsIso_ = ( muIso > absiso_max ) ? absiso_max :  muIso ;
-     double theAbsIso  = ( muIso*scale ) +  offset  ;
-     //if ( scale != 1. ) cout <<" muIso: "<< muIso << " scaled by "<< scale <<endl ;
-     //return theAbsIso ;
-     return theAbsIso ;
-}
-
-// type 0: All , 1: Maximum, 2: Residual 
-// type 0: All , 1: Minimum, 2: Residual 
-double HcalAna::IsoDeposit( int type, string Obj, int mu_id, int dR_i, double offset, double scale ) { 
-
-     //absolute isolation
-     double iso_min = 9999 ;
-     double iso_max = 0 ;
-     double iso_all = 0 ;
-     double iso_res = 0 ;
-     double iso_    = 0 ;
-     int jj = 0 ;
-     if ( strncasecmp( "muon", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        for ( int j=0; j< 4; j++) {
-            if ( dR_i == 1 ) iso_ = leaves.muIso1[mu_id][j] ;
-            if ( dR_i == 2 ) iso_ = leaves.muIso2[mu_id][j] ;
-            if ( dR_i == 3 ) iso_ = leaves.muIso3[mu_id][j] ;
-            if ( dR_i == 4 ) iso_ = leaves.muIso4[mu_id][j] ;
-            if ( dR_i == 5 ) iso_ = leaves.muIso5[mu_id][j] ;
-            if ( iso_ > 0 ) jj++ ;
-	    iso_max = ( iso_ > iso_max ) ? iso_ : iso_max ;
-	    iso_min = ( iso_ < iso_min && iso_ > 0 ) ? iso_ : iso_min ;
-	    iso_all += iso_ ;
-        }
-        //iso_res = iso_all - iso_max ;
-        iso_res = iso_all - (jj*iso_min) ;
-     }
-     if ( strncasecmp( "gen", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        for ( int j=0; j< 4; j++) {
-            if ( dR_i == 1 ) iso_ = leaves.genIso1[mu_id][j] ;
-            if ( dR_i == 2 ) iso_ = leaves.genIso2[mu_id][j] ;
-            if ( dR_i == 3 ) iso_ = leaves.genIso3[mu_id][j] ;
-            if ( dR_i == 4 ) iso_ = leaves.genIso4[mu_id][j] ;
-            if ( dR_i == 5 ) iso_ = leaves.genIso5[mu_id][j] ;
-            if ( iso_ > 0 ) jj++ ;
-	    iso_max = ( iso_ > iso_max ) ? iso_ : iso_max ;
-	    iso_min = ( iso_ < iso_min && iso_ > 0 ) ? iso_ : iso_min ;
-	    iso_all += iso_ ;
-        }
-        //iso_res = iso_all - iso_max ;
-        iso_res = iso_all - (jj*iso_min) ;
-     }
-     if ( strncasecmp( "jet", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        for ( int j=0; j< 4; j++) {
-            if ( dR_i == 1 ) iso_ = leaves.jetIso1[mu_id][j] ;
-            if ( dR_i == 2 ) iso_ = leaves.jetIso2[mu_id][j] ;
-            if ( dR_i == 3 ) iso_ = leaves.jetIso3[mu_id][j] ;
-            if ( dR_i == 4 ) iso_ = leaves.jetIso4[mu_id][j] ;
-            if ( dR_i == 5 ) iso_ = leaves.jetIso5[mu_id][j] ;
-            if ( iso_ > 0 ) jj++ ;
-	    iso_max = ( iso_ > iso_max ) ? iso_ : iso_max ;
-	    iso_min = ( iso_ < iso_min && iso_ > 0 ) ? iso_ : iso_min ;
-	    iso_all += iso_ ;
-        }
-        //iso_res = iso_all - iso_max ;
-        iso_res = iso_all - (jj*iso_min) ;
-     }
-     double theIso = -1 ;
-     if ( type == 0 ) theIso = iso_all ;
-     //if ( type == 1 ) theIso = iso_max ;
-     if ( type == 1 ) theIso = iso_min ;
-     if ( type == 2 ) theIso = iso_res ;
-
-     double theAbsIso  = ( theIso*scale ) +  offset  ;
-     return theAbsIso ;
-}
-
-double HcalAna::InclusiveIsoDeposit( string Obj, int depth, int mu_id, int dR_i, double offset, double scale ) { 
-
-     //absolute isolation
-     double isoA = 0 ;
-     double iso_ = 0 ;
-     if ( strncasecmp( "muon", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        for ( int j=3; j >= 0; j--) {
-            if ( dR_i == 1 ) iso_ = leaves.muIso1[mu_id][j] ;
-            if ( dR_i == 2 ) iso_ = leaves.muIso2[mu_id][j] ;
-            if ( dR_i == 3 ) iso_ = leaves.muIso3[mu_id][j] ;
-            if ( dR_i == 4 ) iso_ = leaves.muIso4[mu_id][j] ;
-            if ( dR_i == 5 ) iso_ = leaves.muIso5[mu_id][j] ;
-	    if ( j <  depth ) isoA += iso_ ;
-        }
-     }
-     if ( strncasecmp( "gen", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        for ( int j=3; j >= 0; j--) {
-            if ( dR_i == 1 ) iso_ = leaves.genIso1[mu_id][j] ;
-            if ( dR_i == 2 ) iso_ = leaves.genIso2[mu_id][j] ;
-            if ( dR_i == 3 ) iso_ = leaves.genIso3[mu_id][j] ;
-            if ( dR_i == 4 ) iso_ = leaves.genIso4[mu_id][j] ;
-            if ( dR_i == 5 ) iso_ = leaves.genIso5[mu_id][j] ;
-	    if ( j <  depth ) isoA += iso_ ;
-        }
-     }
-     if ( strncasecmp( "jet", Obj.c_str(), Obj.size() ) ==0 && Obj.size() > 0 ) {
-        for ( int j=3; j >= 0; j--) {
-            if ( dR_i == 1 ) iso_ = leaves.jetIso1[mu_id][j] ;
-            if ( dR_i == 2 ) iso_ = leaves.jetIso2[mu_id][j] ;
-            if ( dR_i == 3 ) iso_ = leaves.jetIso3[mu_id][j] ;
-            if ( dR_i == 4 ) iso_ = leaves.jetIso4[mu_id][j] ;
-            if ( dR_i == 5 ) iso_ = leaves.jetIso5[mu_id][j] ;
-	    if ( j <  depth ) isoA += iso_ ;
-        }
-     }
-
-     double theIso  = ( isoA*scale ) +  offset  ;
-     return theIso ;
+   double theIso  = ( IsoA*scale ) +  offset  ;
+   return theIso ;
 }
 
 int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, int scale ) { 
 
-     //absolute isolation
-     double muIhit = -1 ;
-     if ( strncasecmp( "muon", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
-        if ( dR_i == 1 )  muIhit = leaves.muIhit1[mu_id][depth] ;
-	if ( dR_i == 2 )  muIhit = leaves.muIhit2[mu_id][depth] ;
-	if ( dR_i == 3 )  muIhit = leaves.muIhit3[mu_id][depth] ;
-	if ( dR_i == 4 )  muIhit = leaves.muIhit4[mu_id][depth] ;
-	if ( dR_i == 5 )  muIhit = leaves.muIhit5[mu_id][depth] ;
-     }
-     if ( strncasecmp( "gen", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
-        if ( dR_i == 1 )  muIhit = leaves.genIhit1[mu_id][depth] ;
-	if ( dR_i == 2 )  muIhit = leaves.genIhit2[mu_id][depth] ;
-	if ( dR_i == 3 )  muIhit = leaves.genIhit3[mu_id][depth] ;
-	if ( dR_i == 4 )  muIhit = leaves.genIhit4[mu_id][depth] ;
-	if ( dR_i == 5 )  muIhit = leaves.genIhit5[mu_id][depth] ;
-     }
-     if ( strncasecmp( "jet", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
-        if ( dR_i == 1 )  muIhit = leaves.jetIhit1[mu_id][depth] ;
-	if ( dR_i == 2 )  muIhit = leaves.jetIhit2[mu_id][depth] ;
-	if ( dR_i == 3 )  muIhit = leaves.jetIhit3[mu_id][depth] ;
-	if ( dR_i == 4 )  muIhit = leaves.jetIhit4[mu_id][depth] ;
-	if ( dR_i == 5 )  muIhit = leaves.jetIhit5[mu_id][depth] ;
-     }
+   //absolute isolation
+   int IhitA   =  0 ;
+   int Ihit_   =  0 ;
+   int minIhit =  999 ;
+   for ( int j=3; j >= 0; j--) {
+       if ( isoMethod == 0 && j != depth ) continue ;
+       if ( isoMethod == 2 && j  < depth ) continue ;
+       if ( isoMethod == 3 && j  > depth ) continue ;
+
+       if ( strncasecmp( "muon", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+          if ( dR_i == 1 )  Ihit_ = leaves.muIhit1[mu_id][j] ;
+	  if ( dR_i == 2 )  Ihit_ = leaves.muIhit2[mu_id][j] ;
+	  if ( dR_i == 3 )  Ihit_ = leaves.muIhit3[mu_id][j] ;
+	  if ( dR_i == 4 )  Ihit_ = leaves.muIhit4[mu_id][j] ;
+	  if ( dR_i == 5 )  Ihit_ = leaves.muIhit5[mu_id][j] ;
+       }
+       if ( strncasecmp( "gen", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+          if ( dR_i == 1 )  Ihit_ = leaves.genIhit1[mu_id][j] ;
+	  if ( dR_i == 2 )  Ihit_ = leaves.genIhit2[mu_id][j] ;
+	  if ( dR_i == 3 )  Ihit_ = leaves.genIhit3[mu_id][j] ;
+	  if ( dR_i == 4 )  Ihit_ = leaves.genIhit4[mu_id][j] ;
+	  if ( dR_i == 5 )  Ihit_ = leaves.genIhit5[mu_id][j] ;
+       }
+       if ( strncasecmp( "jet", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
+          if ( dR_i == 1 )  Ihit_ = leaves.jetIhit1[mu_id][j] ;
+	  if ( dR_i == 2 )  Ihit_ = leaves.jetIhit2[mu_id][j] ;
+	  if ( dR_i == 3 )  Ihit_ = leaves.jetIhit3[mu_id][j] ;
+	  if ( dR_i == 4 )  Ihit_ = leaves.jetIhit4[mu_id][j] ;
+	  if ( dR_i == 5 )  Ihit_ = leaves.jetIhit5[mu_id][j] ;
+       }
+       if ( isoMethod == 0 ) IhitA  = Ihit_ ;
+       if ( isoMethod  > 0 ) IhitA += Ihit_ ;
+       if ( isoMethod == 1 && Ihit_ < minIhit && Ihit_ > 0 )  minIhit = Ihit_ ;
+
+   }
+   if ( isoMethod == 1 && depth == 1 ) IhitA = minIhit ;
+   if ( isoMethod == 1 && depth == 2 ) IhitA = IhitA - minIhit ;
 
      //double theAbsIso_ = ( muIso > absiso_max ) ? absiso_max :  muIso ;
-     int theIsoHits  = ( muIhit*scale ) +  offset  ;
+     int theIsoHits  = ( IhitA*scale ) +  offset  ;
      //if ( scale != 1. ) cout <<" muIso: "<< muIso << " scaled by "<< scale <<endl ;
      //return theAbsIso ;
      return theIsoHits ;

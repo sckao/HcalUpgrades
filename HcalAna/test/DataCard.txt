@@ -7,20 +7,23 @@
 RootFiles = rootfiles/
 
 # Folder to store results
-Path = SLHC_tt_1/
+Path = SLHC_tt_0/
 
 # plot type : png / gif / eps / jpg / pdf 
 PlotType = png
 
 # Files , '+' is the flag for TChain 
 TheData = ( data+ )
-dataChain = ( shcal_tt_1 )
+dataChain = ( shcal_tt_0, shcal_tt_1, shcal_tt_2 , shcal_tt_3 )
 #dataChain = ( shcal_tt_0, shcal_tt_2 )
 #dataChain = ( shcal_tt_test )
 
 ProcessEvents = -1
 
+# 0: individual, 1: min/max , 2: inclusive
+IsoMethod = 0
+
 # muon       minPt, maxPt, eta 
-MuonCuts = (  10,    500,  0.8  )
+MuonCuts = (  10,    999,  0.8  )
 
 
