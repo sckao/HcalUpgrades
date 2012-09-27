@@ -10,11 +10,20 @@ HcalAna::HcalAna( string datacardfile ){
   Input->GetParameters("ProcessEvents", &ProcessEvents ) ; 
   Input->GetParameters("MuonCuts",      &muonCuts ) ; 
   Input->GetParameters("IsoMethod",     &isoMethod ) ; 
-  
+  Input->GetParameters("HistoName",     &hfName ) ;
 
+  TString Path_fName = hfolder + hfName + ".root" ;
+  theFile = new TFile( Path_fName, "RECREATE" );
+  theFile->cd() ;
+ 
 }
 
 HcalAna::~HcalAna(){
+
+  theFile->cd() ;
+  HistoWrite( "", theFile ) ;
+  cout<<" historams written ! "<<endl ;
+  theFile->Close() ;
 
   delete h_draw ;
   delete Input ;
@@ -52,6 +61,15 @@ void HcalAna::ReadTree( string dataName ) {
    TH2D* w_E_absIso5  = new TH2D("w_E_absIso5",  "gen W muon E vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
    TH2D* h_Pt_absIso5 = new TH2D("h_Pt_absIso5", "reco muon Pt vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
    TH2D* h_E_absIso5  = new TH2D("h_E_absIso5",  "reco muon E vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+
+   /*
+   TH2D* g_Pt_Ihit5 = new TH2D("g_Pt_Ihit5", "gen muon Pt vs Ihit dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   TH2D* g_E_Ihit5  = new TH2D("g_E_Ihit5",  "gen muon E vs Ihit dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   TH2D* w_Pt_Ihit5 = new TH2D("w_Pt_Ihit5", "gen W muon Pt vs Ihit dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   TH2D* w_E_Ihit5  = new TH2D("w_E_Ihit5",  "gen W muon E vs Ihit dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   TH2D* h_Pt_Ihit5 = new TH2D("h_Pt_Ihit5", "reco muon Pt vs Ihit dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   TH2D* h_E_Ihit5  = new TH2D("h_E_Ihit5",  "reco muon E vs Ihit dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   */
 
    TH2D* h_abs_relIso  = new TH2D("h_abs_relIso",  "reco muon abs vs rel Iso dR 0.3",  120, 0,30, 60, 0., 6 ) ;
    TH2D* w_abs_relIso  = new TH2D("w_abs_relIso",  "gen W muon abs vs rel Iso dR 0.3", 120, 0,30, 60, 0., 6 ) ;
@@ -160,10 +178,6 @@ void HcalAna::ReadTree( string dataName ) {
    RelBgRate[3]  = new TH1D("RelBgRate4", "Background rate in 95% signal efficiency (Rel), Depth_4", 5, 0., 0.5);
    HitBgRate[3]  = new TH1D("HitBgRate4", "Background rate in 95% signal efficiency (Hit), Depth_4", 5, 0., 0.5);
 
-   //AbsBgRate[4]  = new TH1D("AbsBgRate5", "Background rate in 95% signal efficiency (Abs), Depth_5", 5, 0., 0.5);
-   //RelBgRate[4]  = new TH1D("RelBgRate5", "Background rate in 95% signal efficiency (Rel), Depth_5", 5, 0., 0.5);
-   //HitBgRate[4]  = new TH1D("HitBgRate5", "Background rate in 95% signal efficiency (Hit), Depth_5", 5, 0., 0.5);
-
    int nEvt = 0 ;
    for ( int i=0; i< totalN ; i++ ) {
        if ( ProcessEvents > 0 && i > ( ProcessEvents - 1 ) ) break;
@@ -172,6 +186,7 @@ void HcalAna::ReadTree( string dataName ) {
        nEvt++; 
        h_nMu->Fill( leaves.nMuons ) ;
 
+       // loop all muons in the event
        for ( int k=0; k< leaves.nMuons; k++){
            TLorentzVector mP4( leaves.muPx[k], leaves.muPy[k], leaves.muPz[k], leaves.muE[k] )  ;
            
@@ -220,7 +235,9 @@ void HcalAna::ReadTree( string dataName ) {
            double theRel = -1 ;
            if ( abs( leaves.momId[k]) == 24 ) {
 
+              // looping 4 different depths 
               for ( int j=0; j<3 ; j++ ) {
+                  // looping 5 different dR 
                   for ( int r=1; r < 6; r++ ) {
 
                       double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
@@ -231,7 +248,6 @@ void HcalAna::ReadTree( string dataName ) {
                       int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
 
                       //if (r == 3) printf(" (%d), layer_%d , iso = %f from %d hits\n", k, j, theAbsIso_, theIsohit_ ) ;
-
                       w_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) ) ;
                       w_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) ) ;
                       w_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) ) ;
@@ -298,7 +314,11 @@ void HcalAna::ReadTree( string dataName ) {
        }
 
    } // end of event looping
- 
+
+   // **************************************** 
+   // *           Draw Histograms            *
+   // **************************************** 
+
    // Calculate Background Ratio
    string hTitle_BgRate[3] = { "Depth 1", "Depth 2", "Depth 3" };
    // set histogram's attributions : axis, labelsize(0.05), tickLength(0.03), titleSize(0.04), titleOffset(1)
@@ -483,6 +503,7 @@ double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double 
    double IsoA   =  0 ;
    double Iso_   =  0 ;
    double minIso =  999 ;
+   double maxIso =  0 ;
    for ( int j=3; j >= 0; j--) {
        if ( isoMethod == 0 && j != depth ) continue ;
        if ( isoMethod == 2 && j  < depth ) continue ;
@@ -512,9 +533,10 @@ double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double 
        if ( isoMethod == 0 ) IsoA  = Iso_ ;
        if ( isoMethod  > 0 ) IsoA += Iso_ ;
        if ( isoMethod == 1 && Iso_ < minIso && Iso_ > 0. )  minIso = Iso_ ;
+       if ( isoMethod == 1 && Iso_ > maxIso && Iso_ > 0. )  maxIso = Iso_ ;
    }
    if ( isoMethod == 1 && depth == 1 ) IsoA = minIso ;
-   if ( isoMethod == 1 && depth == 2 ) IsoA = IsoA - minIso ;
+   if ( isoMethod == 1 && depth == 2 ) IsoA = maxIso ;
 
    double theIso  = ( IsoA*scale ) +  offset  ;
    return theIso ;
@@ -593,4 +615,91 @@ double HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     return bR ;
 }
 
+vector<iMatch> HcalAna::GlobalDRMatch( vector<objID> vr, vector<objID> vg ) {
 
+    vector<int> pool ;
+    for (size_t i=0; i < vg.size(); i++) pool.push_back(i) ;
+    //printf(" size of vr : %d and vg : %d \n", (int)vr.size(), (int)vg.size() ) ;
+    if ( vr.size() > vg.size() ) {
+       for ( size_t i=0 ; i< vr.size() - vg.size() ; i++ ) pool.push_back( -1 ) ;
+    }
+    //cout<<" pool size = "<< pool.size() <<endl ;
+
+    vector<iMatch> vMatch ;
+    vector<iMatch> vMatch0 ;
+    iMatch iM0 ;
+    double minDR = 999 ;
+    do {
+
+        double dr2 = 0 ;
+        vMatch0.clear() ;
+        //cout<<" ( " ;
+        for ( size_t j=0; j< vr.size() ; j++ ) {
+            if ( pool[j] == -1 ) continue ;
+            double dr_ = vr[j].second.DeltaR( vg[ pool[j] ].second ) ;
+            iM0.idg  = pool[j] ;
+            iM0.idr  = j ;
+            iM0.ig  = vg[ pool[j] ].first ;
+            iM0.ir  = vr[ j ].first ;
+            iM0.dr  = dr_ ;
+            iM0.dPt = ( vr[j].second.Pt() - vg[ pool[j] ].second.Pt() ) / vg[ pool[j] ].second.Pt()  ;
+            vMatch0.push_back( iM0 ) ;
+            dr2 += (dr_*dr_) ;
+            //cout<< j <<", " ;
+        }
+        double dr = sqrt( dr2 ) ;
+        //cout<<" ) , dR = "<< dr << endl ;
+
+        if ( dr < minDR ) {
+             minDR = dr ;
+             vMatch = vMatch0 ;
+        }
+
+    } while (  next_permutation( pool.begin() ,pool.end() ) ) ;
+
+    return vMatch ;
+}
+
+// depth: 1~3 , nbin : total number of bins of the hIso 
+double HcalAna::HistPDF( double x, TH1D* hIso, int depth, int nbin ) {
+
+    TH1D* hPDF = (TH1D*) hIso->Clone() ;
+    int inib = depth + ( nbin/4 )*(depth - 1) ;
+    int endb = ( nbin/4 )* depth  ;
+
+    double totalN = hPDF->Integral( inib, endb ); 
+    hPDF->Scale( 1. / totalN )  ; 
+
+    double iprob = 0 ;
+    int bin95 = 1;
+    
+    do {
+       iprob += hPDF->GetBinContent( bin95 );
+       bin95++ ;
+    } while( iprob < 0.95 ) ;
+
+    int theBin = hPDF->FindBin(x); 
+
+    // average out the tail 
+    double prob = 0 ;
+    if ( theBin >= bin95 ) {
+       int outb = (nbin/4) - bin95 ;
+       prob =  (0.05 / outb) ;
+    } else {
+       prob = hPDF->GetBinContent( theBin ) ;
+    }
+    
+    return prob*(nbin/4) ;
+}
+
+void HcalAna::HistoWrite( string theFolder , TFile* file ){
+
+   if ( theFolder.size() > 0 ) file->cd( theFolder.c_str() );
+
+   for ( int idR=0; idR<5 ; idR++) {
+       w_absIso[idR]->Write() ;
+       w_relIso[idR]->Write() ;
+       w_Ihits[idR]->Write()  ;
+   }
+
+}

@@ -35,6 +35,19 @@
 //#define MAXMU  10
 //#define MAXJET 20
 
+typedef pair<int, TLorentzVector> objID ;
+
+struct iMatch {
+
+   int    idg ; // the matching id for gen
+   int    idr ; // the matching id for reco
+   int    ig ; // position in gen collection
+   int    ir ; // position in reco collection
+   double dr ;
+   double dPt ;
+
+} ;
+
 class HcalAna : public TObject {
 
 public:
@@ -53,8 +66,17 @@ public:
    double IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset = 0 , double scale = 1 ) ;
    int    IsoHits( string type, int mu_id, int depth, int dR_i, int offset = 0 , int scale = 1 ) ;
    double BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth  );
+ 
+   vector<iMatch> GlobalDRMatch( vector<objID> vr, vector<objID> vg ) ;
+   double HistPDF( double x, TH1D* hIso, int depth, int nbin )  ;
+
+   void HistoWrite( string theFolder , TFile* file ) ;
+
 
 private:
+
+   TFile *theFile ;
+   string hfName ;
 
    AnaInput*     Input ;
    hDraw*        h_draw ;
