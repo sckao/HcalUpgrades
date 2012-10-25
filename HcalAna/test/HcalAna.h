@@ -66,6 +66,7 @@ public:
    double IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset = 0 , double scale = 1 ) ;
    int    IsoHits( string type, int mu_id, int depth, int dR_i, int offset = 0 , int scale = 1 ) ;
    double BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth  );
+   double SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth  );
  
    vector<iMatch> GlobalDRMatch( vector<objID> vr, vector<objID> vg ) ;
    double HistPDF( double x, TH1D* hIso, int depth, int nbin )  ;
@@ -87,6 +88,29 @@ private:
    int ProcessEvents ;
    vector<double> muonCuts ;
 
+   TH1D* h_nMu   ;
+   TH1D* h_muE   ;
+   TH1D* h_muPt  ;
+   TH1D* h_JetPt ;
+
+   TH2D* g_Pt_relIso5  ;
+   TH2D* g_E_relIso5   ;
+   TH2D* w_Pt_relIso5  ;
+   TH2D* w_E_relIso5   ;
+   TH2D* h_Pt_relIso5  ;
+   TH2D* h_E_relIso5   ;
+
+   TH2D* g_Pt_absIso5 ;
+   TH2D* g_E_absIso5  ;
+   TH2D* w_Pt_absIso5 ;
+   TH2D* w_E_absIso5  ;
+   TH2D* h_Pt_absIso5 ;
+   TH2D* h_E_absIso5  ;
+
+   TH2D* h_abs_relIso ;
+   TH2D* w_abs_relIso ;
+   TH2D* g_abs_relIso ;
+
    TH1D* r_absIso[5] ;
    TH1D* r_relIso[5] ;
    TH1D* r_Ihits[5] ;
@@ -103,6 +127,15 @@ private:
    TH1D* AbsBgRate[4]  ;
    TH1D* RelBgRate[4]  ;
    TH1D* HitBgRate[4]  ;
+
+   TH1D* AbsSgRate[4]  ;
+   TH1D* RelSgRate[4]  ;
+   TH1D* HitSgRate[4]  ;
+
+   TH1D* r_relIsoA ;
+   TH1D* g_relIsoA ;
+   TH1D* w_relIsoA ;
+   TH1D* j_relIsoA ;
 
    double absiso_max ;
    double absiso_bound ;

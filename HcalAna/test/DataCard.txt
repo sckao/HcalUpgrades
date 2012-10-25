@@ -7,7 +7,10 @@
 RootFiles = rootfiles/
 
 # Folder to store results
-Path = SLHC_tt_0/
+Path = SLHC_tt_2/
+
+# histogram name
+HistoName = histo_Iso
 
 # plot type : png / gif / eps / jpg / pdf 
 PlotType = png
@@ -21,7 +24,7 @@ dataChain = ( shcal_tt_0, shcal_tt_1, shcal_tt_2 , shcal_tt_3 )
 ProcessEvents = -1
 
 # 0: individual, 1: min/max , 2: inclusive
-IsoMethod = 0
+IsoMethod = 2
 
 # muon       minPt, maxPt, eta 
 MuonCuts = (  10,    999,  0.8  )
