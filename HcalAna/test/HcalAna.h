@@ -65,8 +65,8 @@ public:
 
    double IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset = 0 , double scale = 1 ) ;
    int    IsoHits( string type, int mu_id, int depth, int dR_i, int offset = 0 , int scale = 1 ) ;
-   double BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth  );
-   double SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth  );
+   iEff BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth  );
+   iEff SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth  );
  
    vector<iMatch> GlobalDRMatch( vector<objID> vr, vector<objID> vg ) ;
    double HistPDF( double x, TH1D* hIso, int depth, int nbin )  ;

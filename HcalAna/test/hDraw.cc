@@ -13,6 +13,7 @@ hDraw::hDraw( string datacardfile ){
   c1  = new TCanvas("c1","", 800, 600);
   c2  = new TCanvas("c2","", 900, 750);
   c3  = new TCanvas("c3","", 800, 600);
+  c4  = new TCanvas("c4","", 800, 600);
 
   func1 = NULL ;
 
@@ -24,6 +25,7 @@ hDraw::~hDraw(){
   delete c1 ;
   delete c2 ;
   delete c3 ;
+  delete c4 ;
   delete Input ;
   cout<<" Draw ! "<<endl ;
 
@@ -167,6 +169,61 @@ void hDraw::DrawNxM( int id, TH2D* h2, string xTitle, string yTitle, string logZ
       }
 }
 
+// Fill and Draw the Asymmetric Error graph
+void hDraw::FillGraph( TGraphAsymmErrors* &gr, vector<iEff>& xV, vector<iEff>& yV, string xTitle, string yTitle, double yMin, double yMax, int color ) {
+
+    const int sz = xV.size() ;
+    double fX[sz] , fY[sz], eX[sz], eYL[sz], eYH[sz] ;
+    for (int i=0; i< sz; i++) {
+        fX[i]  = xV[i].eff ;
+	eX[i]  = xV[i].errUp ;
+
+	fY[i]  = yV[i].eff ;
+	eYL[i] = yV[i].errUp ;
+	eYH[i] = yV[i].errDn ;
+    }
+   
+    gr  = new TGraphAsymmErrors( sz, fX, fY, eX, eX, eYL, eYH );
+
+    if ( yMax <  99999. )  gr->SetMaximum( yMax );
+    if ( yMin > -99999. )  gr->SetMinimum( yMin);
+    gr->SetMarkerStyle(20);
+    gr->SetMarkerSize(1);
+    gr->SetMarkerColor( color ) ;
+    gr->SetLineColor( color );
+    gr->SetLineWidth(2);
+    gStyle->SetTitleFontSize(0.04) ;
+    gr->GetXaxis()->SetTitleOffset(1.34);
+    gr->GetYaxis()->SetTitleOffset(1.39);
+    gr->GetXaxis()->SetTitleFont(42);
+    gr->GetYaxis()->SetTitleFont(42);
+    gr->GetXaxis()->SetTitleSize(0.04);
+    gr->GetXaxis()->SetTitle( xTitle.c_str() ) ;
+    gr->GetYaxis()->SetTitle( yTitle.c_str() ) ;
+
+
+}
+
+void hDraw::DrawGraphs( string title , string graphName, vector<TGraphAsymmErrors*>& grV ) {
+
+   c4->cd() ;
+   c4->SetFillColor(10);
+   c4->SetFillColor(10);
+   gPad->SetGridx();
+   gPad->SetGridy();
+
+   TMultiGraph *mg = new TMultiGraph();
+   mg->SetTitle( title.c_str() );
+
+   for ( size_t i=0; i< grV.size() ; i++) {
+       mg->Add( grV[i] ) ;
+   }
+
+   mg->Draw("ALP") ;
+   TString plotname = hfolder + graphName + "." + plotType ;
+   c4->Print( plotname );
+
+}
 
 void hDraw::FitNDraw( TH1D* h1, string plotName, string xTitle, string yTitle, string logY, float statY, int color, TLegend* leg ) {
 
@@ -430,6 +487,7 @@ void hDraw::EffPlot( TH1D* hCut, TH1D* hAll, string xlable, double minBinContent
    delete gr ;
    delete gr1 ;
 }
+
 
 // return asymmetry errors <H,L>
 pair<double, double> hDraw::EffError( double N_all, double N_pass ) {

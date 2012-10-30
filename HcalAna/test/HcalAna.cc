@@ -355,75 +355,116 @@ void HcalAna::ReadTree( string dataName ) {
    // **************************************** 
 
    // Calculate Background Ratio
-   string hTitle_Rate[3] = { "Depth 1", "Depth 2", "Depth 3" };
+   //string hTitle_Rate[3] = { "Depth 1+2+3", "Depth 2+3", "Depth 3" };
    // set histogram's attributions : axis, labelsize(0.05), tickLength(0.03), titleSize(0.04), titleOffset(1)
-   h_draw->SetHistoAtt("X", 0.1, 0.06, 0.08, 1. ) ;
-   h_draw->SetHistoAtt("Y", 0.1, 0.02, 0.1, 0 ) ;
+   h_draw->SetHistoAtt("X", 0.05, 0.04, 0.08, 0.5 ) ;
+   h_draw->SetHistoAtt("Y", 0.06, 0.04, 0.06, 0 ) ;
    h_draw->SetPlotStyle( false );
-   h_draw->CreateNxM( "BgRate", 1,3 );
-   TLegend* leg1  = new TLegend(.72, .7, .9, .9 );
+   TLegend* leg1  = new TLegend(.7, .75, .95, .95 );
+   leg1->SetTextSize(0.04);
+   TGraphAsymmErrors* gBGRateA[3] ;
+   TGraphAsymmErrors* gBGRateR[3] ;
+   TGraphAsymmErrors* gBGRateH[3] ;
    // 1. background rate when signal eff = 95% 
    for (int idep = 0 ; idep < 3; idep++) {
-       double count = 0.05 ;
+       vector<iEff> dRV  ;
+       vector<iEff> A_bgRV, R_bgRV, H_bgRV ;
+       double count = 0.1 ;
        for ( int idR = 0 ; idR < 5; idR++ ) {
-           double bgR_a = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
-           double bgR_r = BgRatio( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
-           double bgR_h = BgRatio( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
-           AbsBgRate[idep]->Fill( count , bgR_a ) ;
-           RelBgRate[idep]->Fill( count , bgR_r ) ;
-           HitBgRate[idep]->Fill( count , bgR_h ) ;
+           iEff bgR_a = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
+           iEff bgR_r = BgRatio( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
+           iEff bgR_h = BgRatio( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
+           iEff dRE( count, 0, 0) ;
+
+           dRV.push_back( dRE ) ;    
+           A_bgRV.push_back( bgR_a ) ;    
+           R_bgRV.push_back( bgR_r ) ;    
+           H_bgRV.push_back( bgR_h ) ;    
+
            count += 0.1 ;
        }
+
+       char gName[15] ;
+       sprintf( gName, "BgRate_%d", idep+1 ) ;
+       h_draw->FillGraph( gBGRateH[idep], dRV, H_bgRV, "dR", "", 0.1, 1.1, 6 ) ;
+       h_draw->FillGraph( gBGRateA[idep], dRV, A_bgRV, "dR", "", 0.1, 1.1, 2 ) ;
+       h_draw->FillGraph( gBGRateR[idep], dRV, R_bgRV, "dR", "", 0.1, 1.1, 4 ) ;
 
        // drawing histograms for background rate
        leg1->Clear();
-       leg1->AddEntry( HitBgRate[idep], " Hit  ", "L" ) ;
-       leg1->AddEntry( AbsBgRate[idep], "AbsIso", "L" ) ;
-       leg1->AddEntry( RelBgRate[idep], "RelIso", "L" ) ;
-
-       HitBgRate[idep]->SetMaximum(1.1) ;
-       HitBgRate[idep]->SetMinimum(0.3) ;
-       HitBgRate[idep]->SetTitle( hTitle_Rate[idep].c_str() ) ;
-
-       bool printplot = ( idep == 2 ) ? true : false ;
-       h_draw->DrawNxM( idep+1, HitBgRate[idep], "dR(0.1 ~ 0.5)  ", "", "", 1, 0.1, 0.1, false );
-       h_draw->DrawNxM( idep+1, AbsBgRate[idep],  2, NULL, false );
-       h_draw->DrawNxM( idep+1, RelBgRate[idep],  4, leg1, printplot );
-
+       leg1->AddEntry( gBGRateH[idep], " Hit  ", "P" ) ;
+       leg1->AddEntry( gBGRateA[idep], "AbsIso", "P" ) ;
+       leg1->AddEntry( gBGRateR[idep], "RelIso", "P" ) ;
+ 
+       TCanvas* c_1  = new TCanvas("c_1","", 800, 600);
+       TMultiGraph *mg = new TMultiGraph();
+       mg->SetTitle( "Background Rate" );
+       mg->Add( gBGRateH[idep] ) ;
+       mg->Add( gBGRateA[idep] ) ;
+       mg->Add( gBGRateR[idep] ) ;
+       mg->SetMaximum(1.1) ;
+       mg->SetMinimum(0.2) ;
+       mg->Draw("ALP") ;
+       c_1->Update() ;
+       leg1->Draw("same") ;
+       c_1->Update() ;
+       TString graph_name = hfolder + gName + "." + plotType ;
+       c_1->Print( graph_name );
+       delete c_1 ;
    }
 
    // 2. signal efficiency while background rate = 10%
-   h_draw->CreateNxM( "SgRate", 1,3 );
+   TGraphAsymmErrors* gSGRateA[3] ;
+   TGraphAsymmErrors* gSGRateR[3] ;
+   TGraphAsymmErrors* gSGRateH[3] ;
    for (int idep = 0 ; idep < 3; idep++) {
-       double count = 0.05 ;
+       double count = 0.1 ;
+       vector<iEff> dRV  ;
+       vector<iEff> A_sgRV, R_sgRV, H_sgRV ;
        for ( int idR = 0 ; idR < 5; idR++ ) {
-           double sgR_a = SignalEff( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
-           double sgR_r = SignalEff( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
-           double sgR_h = SignalEff( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
-           AbsSgRate[idep]->Fill( count , sgR_a ) ;
-           RelSgRate[idep]->Fill( count , sgR_r ) ;
-           HitSgRate[idep]->Fill( count , sgR_h ) ;
+           iEff sgR_a = SignalEff( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
+           iEff sgR_r = SignalEff( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
+           iEff sgR_h = SignalEff( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
+           iEff dRE( count, 0, 0) ;
+
+           dRV.push_back( dRE ) ;    
+           A_sgRV.push_back( sgR_a ) ;    
+           R_sgRV.push_back( sgR_r ) ;    
+           H_sgRV.push_back( sgR_h ) ;    
+
            count += 0.1 ;
        }
 
+       char gName[15] ;
+       sprintf( gName, "SgRate_%d", idep+1 ) ;
+       h_draw->FillGraph( gSGRateH[idep], dRV, H_sgRV, "dR", "", 0.1, 1.1, 6  ) ;
+       h_draw->FillGraph( gSGRateA[idep], dRV, A_sgRV, "dR", "", 0.1, 1.1, 2  ) ;
+       h_draw->FillGraph( gSGRateR[idep], dRV, R_sgRV, "dR", "", 0.1, 1.1, 4  ) ;
+
        // Drawing histogram for signal efficiency
        leg1->Clear();
-       leg1->AddEntry( HitSgRate[idep], " Hit  ", "L" ) ;
-       leg1->AddEntry( AbsSgRate[idep], "AbsIso", "L" ) ;
-       leg1->AddEntry( RelSgRate[idep], "RelIso", "L" ) ;
+       leg1->AddEntry( gSGRateH[idep], " Hit  ", "P" ) ;
+       leg1->AddEntry( gSGRateA[idep], "AbsIso", "P" ) ;
+       leg1->AddEntry( gSGRateR[idep], "RelIso", "P" ) ;
 
-       HitSgRate[idep]->SetMaximum(1.1) ;
-       HitSgRate[idep]->SetMinimum(0.3) ;
-       HitSgRate[idep]->SetTitle( hTitle_Rate[idep].c_str() ) ;
-
-       bool printplot = ( idep == 2 ) ? true : false ;
-       h_draw->DrawNxM( idep+1, HitSgRate[idep], "dR(0.1 ~ 0.5)  ", "", "", 1, 0.1, 0.1, false );
-       h_draw->DrawNxM( idep+1, AbsSgRate[idep],  2, NULL, false );
-       h_draw->DrawNxM( idep+1, RelSgRate[idep],  4, leg1, printplot );
-
+       TCanvas* c_1  = new TCanvas("c_1","", 800, 600);
+       TMultiGraph *mg = new TMultiGraph();
+       mg->SetTitle( "Signal Efficiency" );
+       mg->Add( gSGRateH[idep] ) ;
+       mg->Add( gSGRateA[idep] ) ;
+       mg->Add( gSGRateR[idep] ) ;
+       mg->SetMaximum(1.1) ;
+       mg->SetMinimum(0.0) ;
+       mg->Draw("ALP") ;
+       c_1->Update() ;
+       leg1->Draw("same") ;
+       c_1->Update() ;
+       TString graph_name = hfolder + gName + "." + plotType ;
+       c_1->Print( graph_name );
+       delete c_1 ;
+       delete mg ;
    }
    delete leg1 ;
-
 
    // some basic information
    cout<<" drawing histograms "<<endl;
@@ -529,19 +570,8 @@ void HcalAna::ReadTree( string dataName ) {
    h_draw->DrawNxM( 3, r_Ihits[4], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
    h_draw->DrawNxM( 4, j_Ihits[4], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   // ****************************************************
-   // * Combined relIso info : depth0( dR_0.3) + depth1( dR_0.2 ) +  depth1( dR_0.4 )
-   // ****************************************************
-   double bgR_comb = BgRatio( w_relIsoA, g_relIsoA, reliso_nbin, 0 ) ;
-   h_draw->CreateNxM( "CombinedRelIso", 2,2 );
-   h_draw->DrawNxM( 1, w_relIsoA, "combined relIso for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIsoA, "combined relIso for gen muon  ", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIsoA, "combined relIso for reco muon ", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIsoA, "combined relIso for jet       ", "", "logY", 1, 0.1, 0.1, true );
-   printf(" Background ratio from combined relIso : %f \n", bgR_comb ) ;
-
-   h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
-   h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
+   //h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
+   //h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
 
    // set histogram's attributions : axis, labelsize, tickLength, titleSize, titleOffset   
    h_draw->SetHistoAtt("X", 0.1, 0.07, 0.08, 1. ) ;
@@ -671,54 +701,69 @@ int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, i
 }
 
 // depth : 0 ~ 4, 
-double HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
+iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
 
     int bin1 = 1 + depth*( nbin/4 ) ;
     int bin2= (depth+1)*( nbin/4 ) ; 
     double totalS = hS->Integral( bin1, bin2 ) ;
     double totalB = hB->Integral( bin1, bin2 ) ;
 
-    if ( totalS == (double)0 || totalB == (double)0 ) return -1 ;
+    iEff bRs ;
+    if ( totalS == (double)0 || totalB == (double)0 ) return bRs ;
 
     double sR = 0 ;
     double bR = 0 ;
+    double subS = 0 ;
+    double subB = 0 ;
     int binx = bin1 ;
     do {
-        double subS   = hS->Integral( bin1, binx ) ;
-        double subB   = hB->Integral( bin1, binx ) ;
+        subS   = hS->Integral( bin1, binx ) ;
+        subB   = hB->Integral( bin1, binx ) ;
         sR =  subS / totalS ;
         bR =  subB / totalB ;
         binx++ ;
     } while ( sR < 0.95 ) ;
+    pair<double,double> bR_Err = h_draw->EffError( totalB, subB );
     //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
     //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
-    return bR ;
+    bRs.eff = bR ;
+    bRs.errUp = bR_Err.first   ;
+    bRs.errDn = bR_Err.second  ;
+    return bRs ;
 }
 
-double HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
+iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
 
     int bin1 = 1 + depth*( nbin/4 ) ;
     int bin2= (depth+1)*( nbin/4 ) ; 
     double totalS = hS->Integral( bin1, bin2 ) ;
     double totalB = hB->Integral( bin1, bin2 ) ;
 
-    if ( totalS == (double)0 || totalB == (double)0 ) return -1 ;
+    iEff sRs ;
+    if ( totalS == (double)0 || totalB == (double)0 ) return sRs ;
 
     double sR = 0 ;
     double bR = 0 ;
+    double subS = 0 ;
+    double subB = 0 ;
     int binx = bin1 ;
     do {
-        double subS   = hS->Integral( bin1, binx ) ;
-        double subB   = hB->Integral( bin1, binx ) ;
+        subS   = hS->Integral( bin1, binx ) ;
+        subB   = hB->Integral( bin1, binx ) ;
         sR =  subS / totalS ;
         bR =  subB / totalB ;
         binx++ ;
     } while ( bR < 0.10 ) ;
+    pair<double,double> sR_Err = h_draw->EffError( totalS, subS );
     //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
     //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
-    return sR ;
+    sRs.eff = sR ;
+    sRs.errUp = sR_Err.first   ;
+    sRs.errDn = sR_Err.second  ;
+
+    return sRs ;
 }
 
 vector<iMatch> HcalAna::GlobalDRMatch( vector<objID> vr, vector<objID> vg ) {
@@ -767,6 +812,7 @@ vector<iMatch> HcalAna::GlobalDRMatch( vector<objID> vr, vector<objID> vg ) {
 }
 
 // depth: 1~3 , nbin : total number of bins of the hIso 
+// not well-developed yet ....
 double HcalAna::HistPDF( double x, TH1D* hIso, int depth, int nbin ) {
 
     TH1D* hPDF = (TH1D*) hIso->Clone() ;

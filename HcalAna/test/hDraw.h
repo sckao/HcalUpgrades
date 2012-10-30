@@ -12,6 +12,7 @@
 #include <TGraph.h>
 #include <TGraphErrors.h>
 #include <TGraphAsymmErrors.h>
+#include <TMultiGraph.h>
 #include <TLatex.h>
 #include <TLegend.h>
 #include <TCanvas.h>
@@ -24,6 +25,16 @@
 #include "AnaInput.h"
 
 using namespace std;
+
+struct iEff {
+
+  double eff ;
+  double errUp ;
+  double errDn ;
+
+  iEff( double v = 0 , double eU =0, double eD =0 ): eff(v), errUp(eU), errDn(eD) { }
+
+} ;
 
 class hDraw {
 
@@ -45,6 +56,9 @@ class hDraw {
   void FitNDrawAppend ( TH1D* h1, string plotName, float statY, int color = 4, TLegend* leg = NULL ) ;
   void SetFitParameter( string fitFunc_ , double fitMin_, double fitMax_ , int nFitPara_,  double* initVals, int color = 2 ) ;
   void SetFitParameter( string fitFunc_ , TH1D* h1,  double fitMin_, double fitMax_ , int nFitPara_, int color = 2 ) ;
+
+  void FillGraph( TGraphAsymmErrors* &gr, vector<iEff>& xV, vector<iEff>& yV, string xTitle, string yTitle, double yMin, double yMax, int color = 1 ) ;
+  void DrawGraphs( string title , string graphName, vector<TGraphAsymmErrors*>& grV  )  ;
 
   void EffPlot( TH1D* hCut, TH1D* hAll, string xlable, double minBinContent, int beginBin = 1, int endBin = -1 , string graphName = "Efficiency" ) ;
   pair<double, double> EffError( double N_all, double N_pass ) ;
@@ -76,6 +90,7 @@ class hDraw {
   TCanvas*  c1 ;
   TCanvas*  c2 ;
   TCanvas*  c3 ;
+  TCanvas*  c4 ;
 
   TString plotname2 ;
 
