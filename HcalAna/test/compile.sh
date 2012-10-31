@@ -20,7 +20,8 @@ cxxflags="-g -fPIC -Wall -O -ansi -D_GNU_SOURCE -g -O2"
 cxx="-m64"
 
 g++ AnaInput.cc -c  -o AnaInput.o $libs $cflags $cxx $cxxflags
-g++ HcalAna.cc -c  -o  HcalAna.o $libs $cflags $cxx $cxxflags
+g++ Ntuple.cc -c  -o  Ntuple.o $libs $cflags $cxx $cxxflags
 g++ hDraw.cc -c  -o  hDraw.o $libs $cflags $cxx $cxxflags
+g++ HcalAna.cc -c  -o  HcalAna.o $libs $cflags $cxx $cxxflags
 
-g++ $input -o $output AnaInput.o HcalAna.o hDraw.o $libs $cflags $cxx $cxxflags $glibs
+g++ $input -o $output AnaInput.o Ntuple.o HcalAna.o hDraw.o $libs $cflags $cxx $cxxflags $glibs
