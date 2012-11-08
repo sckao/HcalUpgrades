@@ -297,9 +297,9 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
                       int    theIsohit_ = IsoHits( "gen", k, j, r ) ;
                       int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
 
-                      g_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) , scaleFact ) ;
-                      g_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) , scaleFact ) ;
-                      g_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) , scaleFact ) ;
+                      g_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound)  ) ;
+                      g_relIso[r-1]->Fill( theRelIso + (j*reliso_bound)  ) ;
+                      g_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound)   ) ;
 		      if ( j==0 && r == 5 )  g_Pt_relIso5->Fill( gP4.Pt(), theRelIso_ ) ;
 		      if ( j==0 && r == 5 )  g_E_relIso5->Fill(  gP4.E(),  theRelIso_ ) ;
 		      if ( j==0 && r == 5 )  g_Pt_absIso5->Fill( gP4.Pt(), theAbsIso_ ) ;
