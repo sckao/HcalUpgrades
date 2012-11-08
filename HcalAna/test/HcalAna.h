@@ -55,7 +55,7 @@ public:
    HcalAna( string datacardfile = "DataCard.txt");     
    ~HcalAna();     
    
-   void ReadTree( string dataName );
+   void ReadTree( string dataName, bool reScale = false );
 
    /*
    double IsoDeposit( string Obj, int mu_id, int depth, int dR_i, double offset = 0. , double scale = 1. );
@@ -69,9 +69,15 @@ public:
    iEff SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth  );
  
    vector<iMatch> GlobalDRMatch( vector<objID> vr, vector<objID> vg ) ;
+
+   void WriteMuonPtReWeighting( string dataname ) ;
+   void ReadMuonPtReWeighting() ;
+   double GetMuonPtReWeighting( double muPt ) ;
+
    double HistPDF( double x, TH1D* hIso, int depth, int nbin )  ;
 
    void HistoWrite( string theFolder , TFile* file ) ;
+
 
 
 private:
@@ -87,6 +93,10 @@ private:
    int isoMethod ;
    int ProcessEvents ;
    vector<double> muonCuts ;
+
+   double muPt_l[25] ;
+   double muPt_h[25] ;
+   double scaleF[25] ;
 
    TH1D* h_nMu   ;
    TH1D* h_muE   ;

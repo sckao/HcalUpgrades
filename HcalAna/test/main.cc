@@ -22,16 +22,27 @@ int main( int argc, const char* argv[] ) {
 
   //Input->LinkForests("Gen");
   Input->LinkForests("HcalUpgrade");
+  string dataFileNames ;
+  Input->GetParameters( "TheData", &dataFileNames );
+
+  int module = -1 ;
+  Input->GetParameters( "Module", &module ) ;
+  cout<<"  Run module "<< module <<endl ;
 
   HcalAna   *hAna = new HcalAna( datacardfile );
 
+  if ( module == 0 )  hAna->WriteMuonPtReWeighting( dataFileNames );
+  if ( module == 1 )  hAna->ReadTree( dataFileNames );
+  if ( module == 2 )  hAna->ReadTree( dataFileNames, true );
+  /*
   vector<string> dataFileNames ;
   Input->GetParameters( "TheData", &dataFileNames );
 
   for ( size_t i =0 ; i< dataFileNames.size(); i++ ) {
       hAna->ReadTree( dataFileNames[i] );
   } 
-
+  */
+  
   delete hAna ;
 
   return 0;

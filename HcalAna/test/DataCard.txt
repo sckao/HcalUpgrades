@@ -7,7 +7,7 @@
 RootFiles = rootfiles/
 
 # Folder to store results
-Path = SLHC_tt_2/
+Path = SLHC_zs2_tt_mu_reweight/
 
 # histogram name
 HistoName = histo_Iso
@@ -17,9 +17,12 @@ PlotType = png
 
 # Files , '+' is the flag for TChain 
 TheData = ( data+ )
-dataChain = ( shcal_tt_0, shcal_tt_1, shcal_tt_2 , shcal_tt_3 )
-#dataChain = ( shcal_tt_0, shcal_tt_2 )
+#dataChain = ( shcal_tt_0, shcal_tt_1, shcal_tt_2 , shcal_tt_3 )
+dataChain = ( shcal_tt_zs1_0, shcal_tt_zs1_1, shcal_tt_zs1_2 , shcal_tt_zs1_3 )
 #dataChain = ( shcal_tt_test )
+
+# module: 0 -> GetMuonPtReWeighting , 1-> Iso Result w/o re-weighting 2-> IsoResult w/ re-weighting 
+Module = 2
 
 ProcessEvents = -1
 
@@ -27,6 +30,6 @@ ProcessEvents = -1
 IsoMethod = 2
 
 # muon       minPt, maxPt, eta 
-MuonCuts = (  10,    999,  0.8  )
+MuonCuts = ( 10,    999,  0.8  )
 
 

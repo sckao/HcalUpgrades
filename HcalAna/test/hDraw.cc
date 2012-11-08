@@ -201,7 +201,6 @@ void hDraw::FillGraph( TGraphAsymmErrors* &gr, vector<iEff>& xV, vector<iEff>& y
     gr->GetXaxis()->SetTitle( xTitle.c_str() ) ;
     gr->GetYaxis()->SetTitle( yTitle.c_str() ) ;
 
-
 }
 
 void hDraw::DrawGraphs( string title , string graphName, vector<TGraphAsymmErrors*>& grV ) {

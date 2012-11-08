@@ -12,18 +12,9 @@ HcalAna::HcalAna( string datacardfile ){
   Input->GetParameters("IsoMethod",     &isoMethod ) ; 
   Input->GetParameters("HistoName",     &hfName ) ;
 
-  TString Path_fName = hfolder + hfName + ".root" ;
-  theFile = new TFile( Path_fName, "RECREATE" );
-  theFile->cd() ;
- 
 }
 
 HcalAna::~HcalAna(){
-
-  theFile->cd() ;
-  HistoWrite( "", theFile ) ;
-  cout<<" historams written ! "<<endl ;
-  theFile->Close() ;
 
   delete h_draw ;
   delete Input ;
@@ -32,7 +23,15 @@ HcalAna::~HcalAna(){
 }
 
 // analysis template
-void HcalAna::ReadTree( string dataName ) { 
+void HcalAna::ReadTree( string dataName, bool reScale  ) { 
+
+   // create histogram files 
+   TString Path_fName = hfolder + hfName + ".root" ;
+   theFile = new TFile( Path_fName, "RECREATE" );
+   theFile->cd() ;
+
+   // read scale Factor 
+   if ( reScale ) ReadMuonPtReWeighting() ;
 
    // read the ntuple tree 
    TTree* tr = Input->TreeMap( dataName );
@@ -251,6 +250,7 @@ void HcalAna::ReadTree( string dataName ) {
            if ( gP4.Pt() < muonCuts[0] || gP4.Pt() > muonCuts[1] ) continue ;
            if ( fabs( gP4.Eta() ) > muonCuts[2] ) continue ;
 
+           double scaleFact = ( reScale ) ? GetMuonPtReWeighting( gP4.Pt() ) : 1. ;
            double theAbs = -1 ;
            double theRel = -1 ;
            if ( abs( leaves.momId[k]) == 24 ) {
@@ -268,9 +268,9 @@ void HcalAna::ReadTree( string dataName ) {
                       int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
 
                       //if (r == 3) printf(" (%d), layer_%d , iso = %f from %d hits\n", k, j, theAbsIso_, theIsohit_ ) ;
-                      w_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) ) ;
-                      w_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) ) ;
-                      w_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) ) ;
+                      w_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) , scaleFact ) ;
+                      w_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) , scaleFact ) ;
+                      w_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound)  , scaleFact ) ;
 		      if ( j==0 && r == 5 )  w_Pt_relIso5->Fill( gP4.Pt(), theRelIso_ ) ;
 		      if ( j==0 && r == 5 )  w_E_relIso5->Fill(  gP4.E(),  theRelIso_ ) ;
 		      if ( j==0 && r == 5 )  w_Pt_absIso5->Fill( gP4.Pt(), theAbsIso_ ) ;
@@ -297,9 +297,9 @@ void HcalAna::ReadTree( string dataName ) {
                       int    theIsohit_ = IsoHits( "gen", k, j, r ) ;
                       int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
 
-                      g_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) ) ;
-                      g_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) ) ;
-                      g_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) ) ;
+                      g_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) , scaleFact ) ;
+                      g_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) , scaleFact ) ;
+                      g_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) , scaleFact ) ;
 		      if ( j==0 && r == 5 )  g_Pt_relIso5->Fill( gP4.Pt(), theRelIso_ ) ;
 		      if ( j==0 && r == 5 )  g_E_relIso5->Fill(  gP4.E(),  theRelIso_ ) ;
 		      if ( j==0 && r == 5 )  g_Pt_absIso5->Fill( gP4.Pt(), theAbsIso_ ) ;
@@ -606,6 +606,11 @@ void HcalAna::ReadTree( string dataName ) {
    h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
    h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
 
+   // record file in histogram format
+   theFile->cd() ;
+   HistoWrite( "", theFile ) ;
+   cout<<" historams written ! "<<endl ;
+   theFile->Close() ;
 } 
  
 double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset, double scale ) { 
@@ -809,6 +814,92 @@ vector<iMatch> HcalAna::GlobalDRMatch( vector<objID> vr, vector<objID> vg ) {
     } while (  next_permutation( pool.begin() ,pool.end() ) ) ;
 
     return vMatch ;
+}
+
+// write the scaling factor for different muon pt
+void HcalAna::WriteMuonPtReWeighting( string dataName ) {
+
+   cout<<" Get Muon Pt ReWeighting "<< endl ;
+
+   // 1. Get Signal and background muon pt spectrum
+   TTree* tr = Input->TreeMap( dataName );
+   setBranchAddresses( tr, leaves );
+
+   int totalN = tr->GetEntries();
+   cout<<" from  "<< dataName <<" total entries = "<< totalN <<" Process "<< ProcessEvents <<endl;
+
+   TH1D* g_muPt  = new TH1D("g_muPt",  " Gen Muon Pt distribution ", 25, 0, 250 );
+   TH1D* w_muPt  = new TH1D("w_muPt",  " Gen W Muon Pt distribution ", 25, 0, 250 );
+
+   for ( int i=0; i< totalN ; i++ ) {
+       if ( ProcessEvents > 0 && i > ( ProcessEvents - 1 ) ) break;
+       tr->GetEntry( i );
+       for ( int k=0; k< leaves.nGen; k++) {
+           TLorentzVector gP4 = TLorentzVector( leaves.genPx[k], leaves.genPy[k], leaves.genPz[k], leaves.genE[k] ) ;
+           if ( gP4.Pt() < muonCuts[0] || gP4.Pt() > muonCuts[1] ) continue ;
+           if ( fabs( gP4.Eta() ) > muonCuts[2] ) continue ;
+
+           double theP4 = ( gP4.Pt() > 249 ) ? 249.9 : gP4.Pt() ;
+           if ( abs( leaves.momId[k]) == 24 ) w_muPt->Fill( theP4 ) ; // signal 
+           else                               g_muPt->Fill( theP4 ) ; // background 
+           
+       }
+   }
+
+   h_draw->Draw(       g_muPt, "", "muon P_{T} (GeV/c)", "", "logY", 0.95, 2 );
+   h_draw->DrawAppend( w_muPt, "genMuonPt", 0.75, 4 );
+
+   // 2. Calculate and record the scaling factor
+   FILE* logfile = fopen( "MuPtReWeight.log" ,"w"); 
+   TH1D* h1_ = (TH1D*) g_muPt->Clone() ;
+   TH1D* h2_ = (TH1D*) w_muPt->Clone() ;
+
+   h1_->Scale( 1./ g_muPt->Integral() ) ;
+   h2_->Scale( 1./ w_muPt->Integral() ) ;
+
+   int nbin = h1_->GetNbinsX() ;
+   for ( int i=1 ; i <= nbin ; i++ ) {
+       double x1 = h1_->GetBinCenter( i ) ;
+       double w1 = h1_->GetBinWidth( i ) ;
+       double b1 = h1_->GetBinContent( i ) ;
+       double b2 = h2_->GetBinContent( i ) ;
+       double sc = ( b2 < 0.000001 ) ? 0 :  b1/b2 ;  
+       fprintf(logfile," %1d %.1f %.1f  %.3f \n", i,  x1-(w1/2), x1+(w1/2),  sc ) ;
+   }
+ 
+   delete g_muPt ;
+   delete w_muPt ;
+   fclose( logfile ) ;
+
+}
+
+void HcalAna::ReadMuonPtReWeighting( ) {
+
+   FILE* logfile = fopen( "MuPtReWeight.log" ,"r"); 
+   int ibin, r1 ;
+   float ptl , ptu , sf ;
+   for ( int i = 0; i < 25 ; i++ ) {
+       r1 = fscanf(logfile, "%d", &ibin );
+       r1 = fscanf(logfile, "%f", &ptl  );
+       r1 = fscanf(logfile, "%f", &ptu  );
+       r1 = fscanf(logfile, "%f", &sf   );
+       muPt_l[i] = ptl ;
+       muPt_h[i] = ptu ;
+       scaleF[i] = sf  ;
+       if ( r1 != 1 ) cout<<" reading error "<<endl ;
+   }
+
+   fclose( logfile ) ;
+}
+
+double HcalAna::GetMuonPtReWeighting( double muPt ) {
+
+       int i = muPt / 10  ;
+       if ( i > 24 ) i = 24 ;
+       double scaleFactor = scaleF[i] ;
+ 
+       //cout<<" muPt = "<< muPt <<"  i = "<< i <<" scf: "<< scaleF[i] <<endl ;
+       return scaleFactor ;
 }
 
 // depth: 1~3 , nbin : total number of bins of the hIso 
