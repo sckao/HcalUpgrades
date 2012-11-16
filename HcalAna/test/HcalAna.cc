@@ -712,6 +712,7 @@ iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     int bin2= (depth+1)*( nbin/4 ) ; 
     double totalS = hS->Integral( bin1, bin2 ) ;
     double totalB = hB->Integral( bin1, bin2 ) ;
+    printf("*** BGRate from %d ~ %d : Intgral S: %.2f, B: %.2f \n", bin1, bin2, totalS, totalB ) ;
 
     iEff bRs ;
     if ( totalS == (double)0 || totalB == (double)0 ) return bRs ;
@@ -720,19 +721,35 @@ iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     double bR = 0 ;
     double subS = 0 ;
     double subB = 0 ;
+    double last_subS = 0 ;
+    double last_subB = 0 ;
+    double last_sR   = 0 ;
     int binx = bin1 ;
-    do {
+    do { 
+        last_sR   = sR ;
+        last_subB = subB ;
+        last_subS = subS ;
         subS   = hS->Integral( bin1, binx ) ;
         subB   = hB->Integral( bin1, binx ) ;
         sR =  subS / totalS ;
         bR =  subB / totalB ;
+        printf(" bin: %d, S: %.1f sR: %.2f , B: %.1f bR: %.2f \n", binx, subS, (subS/totalS) , subB , (subB/totalB) ) ;
         binx++ ;
     } while ( sR < 0.95 ) ;
-    pair<double,double> bR_Err = h_draw->EffError( totalB, subB );
+    
+    double slope  = ( subB - last_subB ) / ( sR - last_sR ) ;
+    double subB95 = slope*( 0.95 - last_sR ) + last_subB ;
+    printf("** b1: %.1f ( %.3f) < b: %1.f ( %.3f) < b2: %.1f ( %.3f) \n", 
+             last_subB, last_subB/totalB, subB95, subB/totalB, subB, bR ) ;
+    printf("** s1: %.1f ( %.3f) <         ( 0.95) < s2: %.1f ( %.3f) \n", 
+             last_subS, last_subS/totalS,         subS, sR ) ;
+
+    pair<double,double> bR_Err = h_draw->EffError( totalB, subB95 );
     //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
     //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
-    bRs.eff = bR ;
+    bRs.eff = subB95 / totalB ;
+    //bRs.eff = bR ;
     bRs.errUp = bR_Err.first   ;
     bRs.errDn = bR_Err.second  ;
     return bRs ;
@@ -744,6 +761,7 @@ iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     int bin2= (depth+1)*( nbin/4 ) ; 
     double totalS = hS->Integral( bin1, bin2 ) ;
     double totalB = hB->Integral( bin1, bin2 ) ;
+    printf("*** SgEff from %d ~ %d : Intgral S: %.2f, B: %.2f \n", bin1, bin2, totalS, totalB ) ;
 
     iEff sRs ;
     if ( totalS == (double)0 || totalB == (double)0 ) return sRs ;
@@ -753,18 +771,35 @@ iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     double subS = 0 ;
     double subB = 0 ;
     int binx = bin1 ;
+    double last_subS = 0 ;
+    double last_subB = 0 ;
+    double last_bR   = 0 ;
     do {
+        last_bR   = bR ;
+        last_subB = subB ;
+        last_subS = subS ;
         subS   = hS->Integral( bin1, binx ) ;
         subB   = hB->Integral( bin1, binx ) ;
         sR =  subS / totalS ;
         bR =  subB / totalB ;
+        printf(" bin: %d, S: %.1f sR: %.2f , B: %.1f bR: %.2f \n", binx, subS, (subS/totalS) , subB , (subB/totalB) ) ;
         binx++ ;
     } while ( bR < 0.10 ) ;
-    pair<double,double> sR_Err = h_draw->EffError( totalS, subS );
+
+    double slope  = ( subS - last_subS ) / ( bR - last_bR ) ;
+    double subS10 = slope*( 0.1 - last_bR ) + last_subS ;
+    printf("** s1: %.1f ( %.3f) < s: %.1f ( %.3f) < s2: %.1f ( %.3f) \n", 
+              last_subS, last_subS/totalS, subS10, subS10/totalS ,subS, sR ) ;
+    printf("** b1: %.1f ( %.3f) <         ( 0.1 ) < b2: %.1f ( %.3f) \n", 
+              last_subB, last_subB/totalB,         subB, bR ) ;
+
+
+    pair<double,double> sR_Err = h_draw->EffError( totalS, subS10 );
     //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
     //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
-    sRs.eff = sR ;
+    sRs.eff = subS10 / totalS  ;
+    //sRs.eff = sR  ;
     sRs.errUp = sR_Err.first   ;
     sRs.errDn = sR_Err.second  ;
 
@@ -900,39 +935,6 @@ double HcalAna::GetMuonPtReWeighting( double muPt ) {
  
        //cout<<" muPt = "<< muPt <<"  i = "<< i <<" scf: "<< scaleF[i] <<endl ;
        return scaleFactor ;
-}
-
-// depth: 1~3 , nbin : total number of bins of the hIso 
-// not well-developed yet ....
-double HcalAna::HistPDF( double x, TH1D* hIso, int depth, int nbin ) {
-
-    TH1D* hPDF = (TH1D*) hIso->Clone() ;
-    int inib = depth + ( nbin/4 )*(depth - 1) ;
-    int endb = ( nbin/4 )* depth  ;
-
-    double totalN = hPDF->Integral( inib, endb ); 
-    hPDF->Scale( 1. / totalN )  ; 
-
-    double iprob = 0 ;
-    int bin95 = 1;
-    
-    do {
-       iprob += hPDF->GetBinContent( bin95 );
-       bin95++ ;
-    } while( iprob < 0.95 ) ;
-
-    int theBin = hPDF->FindBin(x); 
-
-    // average out the tail 
-    double prob = 0 ;
-    if ( theBin >= bin95 ) {
-       int outb = (nbin/4) - bin95 ;
-       prob =  (0.05 / outb) ;
-    } else {
-       prob = hPDF->GetBinContent( theBin ) ;
-    }
-    
-    return prob*(nbin/4) ;
 }
 
 void HcalAna::HistoWrite(  string theFolder , TFile* file ) {

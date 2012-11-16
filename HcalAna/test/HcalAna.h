@@ -74,8 +74,6 @@ public:
    void ReadMuonPtReWeighting() ;
    double GetMuonPtReWeighting( double muPt ) ;
 
-   double HistPDF( double x, TH1D* hIso, int depth, int nbin )  ;
-
    void HistoWrite( string theFolder , TFile* file ) ;
 
 
