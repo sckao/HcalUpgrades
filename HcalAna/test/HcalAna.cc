@@ -944,7 +944,7 @@ void HcalAna::WriteMuonPtReWeighting( string dataName ) {
            if ( gP4.Pt() < pt_cut ) continue ;
            if ( fabs( gP4.Eta() ) > eta_cut ) continue ;
 
-           double theP4 = ( gP4.Pt() > 249.9 ) ? 249.9 : gP4.E() ;
+           double theP4 = ( gP4.Pt() > 249.9 ) ? 249.9 : gP4.Pt() ;
            if ( abs( leaves.momId[k]) == 24 ) w_muPt->Fill( theP4 ) ; // signal 
            else                               g_muPt->Fill( theP4 ) ; // background 
            
