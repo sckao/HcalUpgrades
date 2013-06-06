@@ -7,10 +7,13 @@
 RootFiles = rootfiles/
 
 # Folder to store results
-Path = SLHC_zs2_tt_mu_reweight/
+Path = SLHC_zs1_iso0/
 
 # histogram name
-HistoName = histo_Iso
+HistoName = histo_Iso0
+
+# Re-weighting file name
+ScaleFile = MuPtReWeight
 
 # plot type : png / gif / eps / jpg / pdf 
 PlotType = png
@@ -21,15 +24,21 @@ TheData = ( data+ )
 dataChain = ( shcal_tt_zs1_0, shcal_tt_zs1_1, shcal_tt_zs1_2 , shcal_tt_zs1_3 )
 #dataChain = ( shcal_tt_test )
 
-# module: 0 -> GetMuonPtReWeighting , 1-> Iso Result w/o re-weighting 2-> IsoResult w/ re-weighting 
+# module: 0 -> GetMuonPtReWeighting , 1: Iso Result w/o re-weighting 2: IsoResult w/ re-weighting 3: Draw histograms
 Module = 2
+
+SkipEvents = 0 
 
 ProcessEvents = -1
 
 # 0: individual, 1: min/max , 2: inclusive
-IsoMethod = 2
+IsoMethod = 0
 
 # muon       minPt, maxPt, eta 
 MuonCuts = ( 10,    999,  0.8  )
-
+# Jet/MET     Pt,   Eta, NDau,   CEF,  NEF,   CHF,   NHF,  MEF
+JetCuts = (   35.,  0.8,    5,   0.9,  0.9,  0.99,  0.99,  0.9 )
+# NVertices Range 
+#           minNVtx, maxNVtx 
+VtxCuts = (   1   , 100 )
 

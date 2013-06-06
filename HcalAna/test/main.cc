@@ -21,7 +21,6 @@ int main( int argc, const char* argv[] ) {
   AnaInput        *Input = new AnaInput( datacardfile );
 
   //Input->LinkForests("Gen");
-  Input->LinkForests("HcalUpgrade");
   string dataFileNames ;
   Input->GetParameters( "TheData", &dataFileNames );
 
@@ -34,6 +33,10 @@ int main( int argc, const char* argv[] ) {
   if ( module == 0 )  hAna->WriteMuonPtReWeighting( dataFileNames );
   if ( module == 1 )  hAna->ReadTree( dataFileNames );
   if ( module == 2 )  hAna->ReadTree( dataFileNames, true );
+  if ( module == 3 )  {
+                      hAna->OpenHistograms() ;
+                      hAna->DrawHistograms() ;
+  }
   /*
   vector<string> dataFileNames ;
   Input->GetParameters( "TheData", &dataFileNames );

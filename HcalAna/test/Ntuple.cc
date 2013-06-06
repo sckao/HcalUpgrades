@@ -34,12 +34,12 @@ void setBranchAddresses(TTree* chain, Ntuple& treeVars)
   chain -> SetBranchAddress("jetE",         treeVars.jetE      );
   chain -> SetBranchAddress("jetNDau",      treeVars.jetNDau   );
   chain -> SetBranchAddress("jetCM",        treeVars.jetCM     );
-  chain -> SetBranchAddress("jetNM",        treeVars.jetNM     );
-  chain -> SetBranchAddress("jetMM",        treeVars.jetMM     );
+  chain -> SetBranchAddress("jetNM",        treeVars.jetNM     ); // neutral Multiplicity
+  chain -> SetBranchAddress("jetMM",        treeVars.jetMM     ); // muon Multiplicity
   chain -> SetBranchAddress("jetCEF",       treeVars.jetCEF    );
   chain -> SetBranchAddress("jetCHF",       treeVars.jetCHF    );
   chain -> SetBranchAddress("jetNHF",       treeVars.jetNHF    );
-  chain -> SetBranchAddress("jetNEF",       treeVars.jetNEF    );
+  chain -> SetBranchAddress("jetNEF",       treeVars.jetNEF    );  // muon energy fraction
   chain -> SetBranchAddress("jetMEF",        treeVars.jetMEF    );
   chain -> SetBranchAddress("jetIso5",      treeVars.jetIso5     );
   chain -> SetBranchAddress("jetIso4",      treeVars.jetIso4     );

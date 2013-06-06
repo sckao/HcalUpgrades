@@ -1,3 +1,9 @@
+#include <TLegend.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+#include <TGraph.h>
+#include <TGraphErrors.h>
+
 #include "HcalAna.h"
 
 HcalAna::HcalAna( string datacardfile ){
@@ -5,12 +11,17 @@ HcalAna::HcalAna( string datacardfile ){
   Input  = new AnaInput( datacardfile );
   h_draw = new hDraw( datacardfile ); 
  
+  SkipEvents = 0 ;
   Input->GetParameters("PlotType",      &plotType ) ; 
   Input->GetParameters("Path",          &hfolder ) ; 
   Input->GetParameters("ProcessEvents", &ProcessEvents ) ; 
+  Input->GetParameters("SkipEvents",    &SkipEvents ) ;
   Input->GetParameters("MuonCuts",      &muonCuts ) ; 
+  Input->GetParameters("JetCuts",       &jetCuts ) ; 
+  Input->GetParameters("VtxCuts",       &vtxCuts ) ; 
   Input->GetParameters("IsoMethod",     &isoMethod ) ; 
   Input->GetParameters("HistoName",     &hfName ) ;
+  Input->GetParameters("ScaleFile",     &scaleFile ) ;
 
 }
 
@@ -26,6 +37,7 @@ HcalAna::~HcalAna(){
 void HcalAna::ReadTree( string dataName, bool reScale  ) { 
 
    // create histogram files 
+   gSystem->mkdir( hfolder.c_str() );
    TString Path_fName = hfolder + hfName + ".root" ;
    theFile = new TFile( Path_fName, "RECREATE" );
    theFile->cd() ;
@@ -34,7 +46,15 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
    if ( reScale ) ReadMuonPtReWeighting() ;
 
    // read the ntuple tree 
-   TTree* tr = Input->TreeMap( dataName );
+   string dataFileNames ;
+   if ( dataName != "0" ) {
+      dataFileNames = dataName ;
+   } else {
+      Input->GetParameters( "TheData", &dataFileNames );
+   }
+   TTree* tr   = Input->GetTree( dataFileNames, "HcalUpgrade" );
+
+   // set addresses for variables
    setBranchAddresses( tr, leaves );
 
    int totalN = tr->GetEntries();
@@ -44,215 +64,121 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
    if ( isoMethod == 2 ) cout <<" Iso Deposit from inclusive layers "<<endl ;
 
    // booking histograms 
+   h_nVtx  = new TH1D("h_nVtx",  " number of vertices ",   100, 0, 100 );
    h_nMu   = new TH1D("h_nMu",   " number of reco Muons ", 15, 0, 15 );
-   h_muE   = new TH1D("h_muE",   " Muon E distribution  ", 50, 0, 500 );
-   h_muPt  = new TH1D("h_muPt",  " Muon Pt distribution ", 50, 0, 250 );
+   h_nJet  = new TH1D("h_nJet",  " number of jets ", 15, 0, 15 );
+   h_wmuE  = new TH1D("h_wmuE",  " W Muon E distribution  ", 50, 0, 500 );
+   h_bmuE  = new TH1D("h_bmuE",  " b Muon E distribution  ", 50, 0, 500 );
+   h_wmuPt = new TH1D("h_wmuPt", " W Muon Pt distribution ", 50, 0, 250 );
+   h_bmuPt = new TH1D("h_bmuPt", " b Muon Pt distribution ", 50, 0, 250 );
    h_JetPt = new TH1D("h_JetPt", " Jet Pt distribution  ", 50, 0, 500 );
 
-   g_Pt_relIso5 = new TH2D("g_Pt_relIso5", "gen muon Pt vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
-   g_E_relIso5  = new TH2D("g_E_relIso5",  "gen muon E vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
-   w_Pt_relIso5 = new TH2D("w_Pt_relIso5", "gen W muon Pt vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
-   w_E_relIso5  = new TH2D("w_E_relIso5",  "gen W muon E vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
-   h_Pt_relIso5 = new TH2D("h_Pt_relIso5", "reco muon Pt vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
-   h_E_relIso5  = new TH2D("h_E_relIso5",  "reco muon E vs RelIso dR 0.5", 60, 0,300, 60, 0., 6. ) ;
+   // histograms for various isolation deposit
+   double absiso_max = 50 ;
+   double reliso_max =  5 ;
+   double isohit_max = 50 ;
 
-   g_Pt_absIso5 = new TH2D("g_Pt_absIso5", "gen muon Pt vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
-   g_E_absIso5  = new TH2D("g_E_absIso5",  "gen muon E vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
-   w_Pt_absIso5 = new TH2D("w_Pt_absIso5", "gen W muon Pt vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
-   w_E_absIso5  = new TH2D("w_E_absIso5",  "gen W muon E vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
-   h_Pt_absIso5 = new TH2D("h_Pt_absIso5", "reco muon Pt vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
-   h_E_absIso5  = new TH2D("h_E_absIso5",  "reco muon E vs AbsIso dR 0.5", 60, 0,300, 60, 0., 30 ) ;
+   for ( int j=0; j<4 ; j++ ) {
+       for ( int k=0; k<5 ; k++ ) {
+           char hname_a[20], htitle_a[80], hname_r[20], htitle_r[80], hname_h[20], htitle_h[80]  ;
+           sprintf( hname_a,   "w_abs_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_a,  "Abs Iso of muon from W at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_r,   "w_rel_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_r,  "Rel Iso of muon from W at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_h,   "w_hit_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_h,  "Iso hits of muon from W at depth %d in dR < 0.%d", j+1, k+1 ) ;
 
-   h_abs_relIso  = new TH2D("h_abs_relIso",  "reco muon abs vs rel Iso dR 0.3",  120, 0,30, 60, 0., 6 ) ;
-   w_abs_relIso  = new TH2D("w_abs_relIso",  "gen W muon abs vs rel Iso dR 0.3", 120, 0,30, 60, 0., 6 ) ;
-   g_abs_relIso  = new TH2D("g_abs_relIso",  "gen muon abs vs rel Iso dR 0.3",   120, 0,30, 60, 0., 6 ) ;
+           wH.h_abs[j][k] = new TH1D( hname_a, htitle_a, 100, 0, absiso_max );
+           wH.h_rel[j][k] = new TH1D( hname_r, htitle_r, 100, 0, reliso_max );
+           wH.h_hit[j][k] = new TH1D( hname_h, htitle_h, 50, 0,  isohit_max );
 
-   reliso_max   = 5.5 ;
-   reliso_bound = 6.0 ;
-   reliso_end   = 24 ;
-   reliso_nbin  = 240 ;
+           sprintf( hname_a,   "b_abs_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_a,  "Abs Iso of muon from b at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_r,   "b_rel_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_r,  "Rel Iso of muon from b at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_h,   "b_hit_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_h,  "Iso hits of muon from b at depth %d in dR < 0.%d", j+1, k+1 ) ;
 
-   absiso_max   = 99. ;
-   absiso_bound = 100. ;
-   absiso_end   = 400 ;
-   absiso_nbin  = 400 ;
+           bH.h_abs[j][k] = new TH1D( hname_a, htitle_a, 100, 0, absiso_max );
+           bH.h_rel[j][k] = new TH1D( hname_r, htitle_r, 100, 0, reliso_max );
+           bH.h_hit[j][k] = new TH1D( hname_h, htitle_h, 50, 0,  isohit_max );
 
-   isohit_max   = 49 ;
-   isohit_bound = 50 ;
-   isohit_end   = 200 ;
-   isohit_nbin  = 200 ;
+           sprintf( hname_a,   "r_abs_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_a,  "Abs Iso of reco muon at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_r,   "r_rel_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_r,  "Rel Iso of reco muon at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_h,   "r_hit_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_h,  "Iso hits of reco muon at depth %d in dR < 0.%d", j+1, k+1 ) ;
 
-   r_Ihits[0]  = new TH1D("r_Ihits1", "nhits in dR < 0.1 ", isohit_nbin, 0, isohit_end);
-   r_Ihits[1]  = new TH1D("r_Ihits2", "nhits in dR < 0.2 ", isohit_nbin, 0, isohit_end);
-   r_Ihits[2]  = new TH1D("r_Ihits3", "nhits in dR < 0.3 ", isohit_nbin, 0, isohit_end);
-   r_Ihits[3]  = new TH1D("r_Ihits4", "nhits in dR < 0.4 ", isohit_nbin, 0, isohit_end);
-   r_Ihits[4]  = new TH1D("r_Ihits5", "nhits in dR < 0.5 ", isohit_nbin, 0, isohit_end);
+           rH.h_abs[j][k] = new TH1D( hname_a, htitle_a, 100, 0, absiso_max );
+           rH.h_rel[j][k] = new TH1D( hname_r, htitle_r, 100, 0, reliso_max );
+           rH.h_hit[j][k] = new TH1D( hname_h, htitle_h, 50, 0,  isohit_max );
 
-   r_absIso[0]  = new TH1D("r_absIso1", "absIso dR < 0.1 ", absiso_nbin, 0, absiso_end);
-   r_absIso[1]  = new TH1D("r_absIso2", "absIso dR < 0.2 ", absiso_nbin, 0, absiso_end);
-   r_absIso[2]  = new TH1D("r_absIso3", "absIso dR < 0.3 ", absiso_nbin, 0, absiso_end);
-   r_absIso[3]  = new TH1D("r_absIso4", "absIso dR < 0.4 ", absiso_nbin, 0, absiso_end);
-   r_absIso[4]  = new TH1D("r_absIso5", "absIso dR < 0.5 ", absiso_nbin, 0, absiso_end);
+           sprintf( hname_a,   "j_abs_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_a,  "Abs Iso of jets at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_r,   "j_rel_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_r,  "Rel Iso of jets at depth %d in dR < 0.%d", j+1, k+1 ) ;
+           sprintf( hname_h,   "j_hit_D%dR%d", j+1, k+1 ) ;
+           sprintf( htitle_h,  "Iso hits of jets at depth %d in dR < 0.%d", j+1, k+1 ) ;
 
-   r_relIso[0]  = new TH1D("r_relIso1", "relIso dR < 0.1 ", reliso_nbin, 0, reliso_end);
-   r_relIso[1]  = new TH1D("r_relIso2", "relIso dR < 0.2 ", reliso_nbin, 0, reliso_end);
-   r_relIso[2]  = new TH1D("r_relIso3", "relIso dR < 0.3 ", reliso_nbin, 0, reliso_end);
-   r_relIso[3]  = new TH1D("r_relIso4", "relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
-   r_relIso[4]  = new TH1D("r_relIso5", "relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
+           jH.h_abs[j][k] = new TH1D( hname_a, htitle_a, 100, 0, absiso_max );
+           jH.h_rel[j][k] = new TH1D( hname_r, htitle_r, 100, 0, reliso_max );
+           jH.h_hit[j][k] = new TH1D( hname_h, htitle_h, 50, 0,  isohit_max );
 
-   g_Ihits[0]  = new TH1D("g_Ihits1", "nhits in dR < 0.1 ", isohit_nbin, 0, isohit_end);
-   g_Ihits[1]  = new TH1D("g_Ihits2", "nhits in dR < 0.2 ", isohit_nbin, 0, isohit_end);
-   g_Ihits[2]  = new TH1D("g_Ihits3", "nhits in dR < 0.3 ", isohit_nbin, 0, isohit_end);
-   g_Ihits[3]  = new TH1D("g_Ihits4", "nhits in dR < 0.4 ", isohit_nbin, 0, isohit_end);
-   g_Ihits[4]  = new TH1D("g_Ihits5", "nhits in dR < 0.5 ", isohit_nbin, 0, isohit_end);
+       }
+   }
+   cout<<" Created all histograms !! "<<endl ;
 
-   g_absIso[0]  = new TH1D("g_absIso1", "absIso dR < 0.1 ", absiso_nbin, 0, absiso_end);
-   g_absIso[1]  = new TH1D("g_absIso2", "absIso dR < 0.2 ", absiso_nbin, 0, absiso_end);
-   g_absIso[2]  = new TH1D("g_absIso3", "absIso dR < 0.3 ", absiso_nbin, 0, absiso_end);
-   g_absIso[3]  = new TH1D("g_absIso4", "absIso dR < 0.4 ", absiso_nbin, 0, absiso_end);
-   g_absIso[4]  = new TH1D("g_absIso5", "absIso dR < 0.5 ", absiso_nbin, 0, absiso_end);
-
-   g_relIso[0]  = new TH1D("g_relIso1", "relIso dR < 0.1 ", reliso_nbin, 0, reliso_end);
-   g_relIso[1]  = new TH1D("g_relIso2", "relIso dR < 0.2 ", reliso_nbin, 0, reliso_end);
-   g_relIso[2]  = new TH1D("g_relIso3", "relIso dR < 0.3 ", reliso_nbin, 0, reliso_end);
-   g_relIso[3]  = new TH1D("g_relIso4", "relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
-   g_relIso[4]  = new TH1D("g_relIso5", "relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
-
-   w_Ihits[0]  = new TH1D("w_Ihits1", "w->mu nhits in dR < 0.1 ", isohit_nbin, 0, isohit_end);
-   w_Ihits[1]  = new TH1D("w_Ihits2", "w->mu nhits in dR < 0.2 ", isohit_nbin, 0, isohit_end);
-   w_Ihits[2]  = new TH1D("w_Ihits3", "w->mu nhits in dR < 0.3 ", isohit_nbin, 0, isohit_end);
-   w_Ihits[3]  = new TH1D("w_Ihits4", "w->mu nhits in dR < 0.4 ", isohit_nbin, 0, isohit_end);
-   w_Ihits[4]  = new TH1D("w_Ihits5", "w->mu nhits in dR < 0.5 ", isohit_nbin, 0, isohit_end);
-
-   w_absIso[0]  = new TH1D("w_absIso1", "w->mu absIso dR < 0.1 ", absiso_nbin, 0, absiso_end);
-   w_absIso[1]  = new TH1D("w_absIso2", "w->mu absIso dR < 0.2 ", absiso_nbin, 0, absiso_end);
-   w_absIso[2]  = new TH1D("w_absIso3", "w->mu absIso dR < 0.3 ", absiso_nbin, 0, absiso_end);
-   w_absIso[3]  = new TH1D("w_absIso4", "w->mu absIso dR < 0.4 ", absiso_nbin, 0, absiso_end);
-   w_absIso[4]  = new TH1D("w_absIso5", "w->mu absIso dR < 0.5 ", absiso_nbin, 0, absiso_end);
-
-   w_relIso[0]  = new TH1D("w_relIso1", "w->mu relIso dR < 0.1 ", reliso_nbin, 0, reliso_end);
-   w_relIso[1]  = new TH1D("w_relIso2", "w->mu relIso dR < 0.2 ", reliso_nbin, 0, reliso_end);
-   w_relIso[2]  = new TH1D("w_relIso3", "w->mu relIso dR < 0.3 ", reliso_nbin, 0, reliso_end);
-   w_relIso[3]  = new TH1D("w_relIso4", "w->mu relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
-   w_relIso[4]  = new TH1D("w_relIso5", "w->mu relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
-
-   j_Ihits[0]  = new TH1D("j_Ihits1", "nhits in dR < 0.1 ", isohit_nbin, 0, isohit_end);
-   j_Ihits[1]  = new TH1D("j_Ihits2", "nhits in dR < 0.2 ", isohit_nbin, 0, isohit_end);
-   j_Ihits[2]  = new TH1D("j_Ihits3", "nhits in dR < 0.3 ", isohit_nbin, 0, isohit_end);
-   j_Ihits[3]  = new TH1D("j_Ihits4", "nhits in dR < 0.4 ", isohit_nbin, 0, isohit_end);
-   j_Ihits[4]  = new TH1D("j_Ihits5", "nhits in dR < 0.5 ", isohit_nbin, 0, isohit_end);
-
-   j_absIso[0]  = new TH1D("j_absIso1", "absIso dR < 0.1 ", absiso_nbin, 0, absiso_end);
-   j_absIso[1]  = new TH1D("j_absIso2", "absIso dR < 0.2 ", absiso_nbin, 0, absiso_end);
-   j_absIso[2]  = new TH1D("j_absIso3", "absIso dR < 0.3 ", absiso_nbin, 0, absiso_end);
-   j_absIso[3]  = new TH1D("j_absIso4", "absIso dR < 0.4 ", absiso_nbin, 0, absiso_end);
-   j_absIso[4]  = new TH1D("j_absIso5", "absIso dR < 0.5 ", absiso_nbin, 0, absiso_end);
-
-   j_relIso[0]  = new TH1D("j_relIso1", "relIso dR < 0.1 ", reliso_nbin, 0, reliso_end);
-   j_relIso[1]  = new TH1D("j_relIso2", "relIso dR < 0.2 ", reliso_nbin, 0, reliso_end);
-   j_relIso[2]  = new TH1D("j_relIso3", "relIso dR < 0.3 ", reliso_nbin, 0, reliso_end);
-   j_relIso[3]  = new TH1D("j_relIso4", "relIso dR < 0.4 ", reliso_nbin, 0, reliso_end);
-   j_relIso[4]  = new TH1D("j_relIso5", "relIso dR < 0.5 ", reliso_nbin, 0, reliso_end);
-
-   AbsBgRate[0]  = new TH1D("AbsBgRate1", "Background rate in 95% signal efficiency (Abs), Depth_1", 5, 0., 0.5);
-   RelBgRate[0]  = new TH1D("RelBgRate1", "Background rate in 95% signal efficiency (Rel), Depth_1", 5, 0., 0.5);
-   HitBgRate[0]  = new TH1D("HitBgRate1", "Background rate in 95% signal efficiency (Hit), Depth_1", 5, 0., 0.5);
-
-   AbsBgRate[1]  = new TH1D("AbsBgRate2", "Background rate in 95% signal efficiency (Abs), Depth_2", 5, 0., 0.5);
-   RelBgRate[1]  = new TH1D("RelBgRate2", "Background rate in 95% signal efficiency (Rel), Depth_2", 5, 0., 0.5);
-   HitBgRate[1]  = new TH1D("HitBgRate2", "Background rate in 95% signal efficiency (Hit), Depth_2", 5, 0., 0.5);
-
-   AbsBgRate[2]  = new TH1D("AbsBgRate3", "Background rate in 95% signal efficiency (Abs), Depth_3", 5, 0., 0.5);
-   RelBgRate[2]  = new TH1D("RelBgRate3", "Background rate in 95% signal efficiency (Rel), Depth_3", 5, 0., 0.5);
-   HitBgRate[2]  = new TH1D("HitBgRate3", "Background rate in 95% signal efficiency (Hit), Depth_3", 5, 0., 0.5);
-
-   AbsBgRate[3]  = new TH1D("AbsBgRate4", "Background rate in 95% signal efficiency (Abs), Depth_4", 5, 0., 0.5);
-   RelBgRate[3]  = new TH1D("RelBgRate4", "Background rate in 95% signal efficiency (Rel), Depth_4", 5, 0., 0.5);
-   HitBgRate[3]  = new TH1D("HitBgRate4", "Background rate in 95% signal efficiency (Hit), Depth_4", 5, 0., 0.5);
-
-   AbsSgRate[0]  = new TH1D("AbsSgRate1", "Signal Efficiency in 95% signal efficiency (Abs), Depth_1", 5, 0., 0.5);
-   RelSgRate[0]  = new TH1D("RelSgRate1", "Signal Efficiency in 95% signal efficiency (Rel), Depth_1", 5, 0., 0.5);
-   HitSgRate[0]  = new TH1D("HitSgRate1", "Signal Efficiency in 95% signal efficiency (Hit), Depth_1", 5, 0., 0.5);
-
-   AbsSgRate[1]  = new TH1D("AbsSgRate2", "Signal Efficiency in 95% signal efficiency (Abs), Depth_2", 5, 0., 0.5);
-   RelSgRate[1]  = new TH1D("RelSgRate2", "Signal Efficiency in 95% signal efficiency (Rel), Depth_2", 5, 0., 0.5);
-   HitSgRate[1]  = new TH1D("HitSgRate2", "Signal Efficiency in 95% signal efficiency (Hit), Depth_2", 5, 0., 0.5);
-
-   AbsSgRate[2]  = new TH1D("AbsSgRate3", "Signal Efficiency in 95% signal efficiency (Abs), Depth_3", 5, 0., 0.5);
-   RelSgRate[2]  = new TH1D("RelSgRate3", "Signal Efficiency in 95% signal efficiency (Rel), Depth_3", 5, 0., 0.5);
-   HitSgRate[2]  = new TH1D("HitSgRate3", "Signal Efficiency in 95% signal efficiency (Hit), Depth_3", 5, 0., 0.5);
-
-   AbsSgRate[3]  = new TH1D("AbsSgRate4", "Signal Efficiency in 95% signal efficiency (Abs), Depth_4", 5, 0., 0.5);
-   RelSgRate[3]  = new TH1D("RelSgRate4", "Signal Efficiency in 95% signal efficiency (Rel), Depth_4", 5, 0., 0.5);
-   HitSgRate[3]  = new TH1D("HitSgRate4", "Signal Efficiency in 95% signal efficiency (Hit), Depth_4", 5, 0., 0.5);
-
-   r_relIsoA  = new TH1D("r_relIsoA", "combined relIso - reco", reliso_nbin, 0, reliso_end);
-   g_relIsoA  = new TH1D("g_relIsoA", "combined relIso - gen", reliso_nbin, 0, reliso_end);
-   w_relIsoA  = new TH1D("w_relIsoA", "combined relIso - genW", reliso_nbin, 0, reliso_end);
-   j_relIsoA  = new TH1D("j_relIsoA", "combined relIso - jet", reliso_nbin, 0, reliso_end);
-
-   // looping through the events
+   // Collect reco and gen muons
+   vector<objID> recoMuColl ;
+   vector<objID> genMuColl ;
+   // looping over the events
    int nEvt = 0 ;
-   for ( int i=0; i< totalN ; i++ ) {
-       if ( ProcessEvents > 0 && i > ( ProcessEvents - 1 ) ) break;
+   int beginEvent = SkipEvents + 1 ;
+   cout<<" Event start from : "<< beginEvent <<" skip "<< SkipEvents <<" events "<< endl ;
+
+   for ( int i= beginEvent ; i< totalN ; i++ ) {
+
+       if ( ProcessEvents > 0 && i > ( ProcessEvents + beginEvent - 1 ) ) break;
+
        tr->GetEntry( i );
 
+       if ( i % 10000 == 0 && i > 9999 ) printf(" ----- processed %8d Events \n", i ) ;
+       //cout<<" Evt# : "<< nEvt <<endl; 
+
        nEvt++; 
+       h_nVtx->Fill( leaves.nVertices ) ;
+       // select event in different no. of vertices.
+       if ( leaves.nVertices > vtxCuts[1] || leaves.nVertices <= vtxCuts[0]  ) continue ;
+    
        h_nMu->Fill( leaves.nMuons ) ;
 
-       // loop all muons in the event
+       // loop all reco muons in the event
        for ( int k=0; k< leaves.nMuons; k++){
            TLorentzVector mP4( leaves.muPx[k], leaves.muPy[k], leaves.muPz[k], leaves.muE[k] )  ;
            
            if ( mP4.Pt() < muonCuts[0] || mP4.Pt() > muonCuts[1] ) continue ;
            if ( fabs( mP4.Eta() ) > muonCuts[2] ) continue ;
-           h_muPt->Fill( mP4.Pt() ) ;
-           h_muE->Fill( mP4.E() ) ;
+           if ( ( leaves.muIhit5[k][0] + leaves.muIhit5[k][1] + leaves.muIhit5[k][2] ) < 1 ) continue ;
 
-           //if ( mP4.E() <= muonSel[0] || mP4.E() > muonSel[1] ) continue ;
-
-           // looping thruogh 4 depths
-           double theAbs = -1 ;
-           double theRel = -1 ;
-           for ( int j=0; j<3 ; j++ ) {
-               // looping 5 different dR 
-               //cout<<" Depth : "<< j+1 <<endl ;
-               for ( int r=1; r < 6; ++r ) {
-                   double theAbsIso_ = IsoDeposit( "muon", k, j, r ) ;
-                   double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
-                   double theRelIso_ = theAbsIso_ / mP4.Pt()   ;
-                   double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
-                   int    theIsohit_ = IsoHits( "muon", k, j, r ) ;
-                   int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
-
-                   r_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) ) ;
-                   r_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) ) ;
-                   r_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) ) ;
-		   if ( j==0 && r == 5 )  h_Pt_relIso5->Fill( mP4.Pt(), theRelIso_ ) ;
-		   if ( j==0 && r == 5 )  h_E_relIso5->Fill(  mP4.E(),  theRelIso_ ) ;
-		   if ( j==0 && r == 5 )  h_Pt_absIso5->Fill( mP4.Pt(), theAbsIso_ ) ;
-		   if ( j==0 && r == 5 )  h_E_absIso5->Fill(  mP4.E(),  theAbsIso_ ) ;
-		   if ( j==2 && r == 1 )  theAbs = theAbsIso_  ;
-
-                   // combined reliso deposit in different depth and dR 
-		   if ( j==0 && r == 2 )  theRel += theRelIso_ ;
-		   if ( j==1 && r == 1 )  theRel += theRelIso_ ;
-		   if ( j==2 && r == 3 )  theRel += theRelIso_ ;
-               }
-           }
-           h_abs_relIso->Fill( theAbs, theRel ) ;
-           r_relIsoA->Fill( theRel ) ;
+           // Collect Reco Muons
+           objID i_mu(13,k, mP4 ) ;
+           recoMuColl.push_back( i_mu ) ;
        }
-
        // get gen muon information 
        for ( int k=0; k< leaves.nGen; k++) {
            TLorentzVector gP4 = TLorentzVector( leaves.genPx[k], leaves.genPy[k], leaves.genPz[k], leaves.genE[k] ) ;
            if ( gP4.Pt() < muonCuts[0] || gP4.Pt() > muonCuts[1] ) continue ;
            if ( fabs( gP4.Eta() ) > muonCuts[2] ) continue ;
+           if ( ( leaves.genIhit5[k][0] + leaves.genIhit5[k][1] + leaves.genIhit5[k][2] ) < 1 ) continue ;
 
+           // Collect Gen Muons
+           objID i_mu( leaves.pdgId[k] ,k, gP4 ) ;
+           genMuColl.push_back( i_mu ) ;
+
+           // Get Scaling factor for background muons -  normalize bg muon pt spectrum to W muons'
            double scaleFact = ( reScale ) ? GetMuonPtReWeighting( gP4.Pt() ) : 1. ;
-           double theAbs = -1 ;
-           double theRel = -1 ;
+
            if ( abs( leaves.momId[k]) == 24 ) {
 
               // looping 4 different depths 
@@ -261,95 +187,145 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
                   for ( int r=1; r < 6; r++ ) {
 
                       double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
-                      double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
+                      double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max - 0.1 : theAbsIso_ ;
                       double theRelIso_ = theAbsIso_ / gP4.Pt()   ;
-                      double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
+                      double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max - 0.01 : theRelIso_ ;
                       int    theIsohit_ = IsoHits( "gen", k, j, r ) ;
-                      int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
+                      int    theIsohit  = ( theIsohit_ >= isohit_max ) ? isohit_max - 1 : theIsohit_ ;
 
-                      //if (r == 3) printf(" (%d), layer_%d , iso = %f from %d hits\n", k, j, theAbsIso_, theIsohit_ ) ;
-                      w_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) , scaleFact ) ;
-                      w_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) , scaleFact ) ;
-                      w_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound)  , scaleFact ) ;
-		      if ( j==0 && r == 5 )  w_Pt_relIso5->Fill( gP4.Pt(), theRelIso_ ) ;
-		      if ( j==0 && r == 5 )  w_E_relIso5->Fill(  gP4.E(),  theRelIso_ ) ;
-		      if ( j==0 && r == 5 )  w_Pt_absIso5->Fill( gP4.Pt(), theAbsIso_ ) ;
-		      if ( j==0 && r == 5 )  w_E_absIso5->Fill(  gP4.E(),  theAbsIso_ ) ;
-		      if ( j==2 && r == 1 )  theAbs = theAbsIso_  ;
-		      // combined reliso deposit in different depth and dR 
-		      if ( j==0 && r == 2 )  theRel += theRelIso_ ;
-		      if ( j==1 && r == 1 )  theRel += theRelIso_ ;
-		      if ( j==2 && r == 3 )  theRel += theRelIso_ ;
+                      wH.h_abs[j][r-1]->Fill( theAbsIso ) ;
+		      wH.h_rel[j][r-1]->Fill( theRelIso ) ;
+		      wH.h_hit[j][r-1]->Fill( theIsohit ) ;
                   }
               }   
-              w_abs_relIso->Fill( theAbs, theRel ) ;
-              w_relIsoA->Fill( theRel ) ;
               //cout<<" --------------- "<<endl ;
            } else {
+
+              // Remove the kicked out muons - muon is away from jet
+              double dR = 999. ;
+              for ( int j =0; j< leaves.nJets ; j++) {
+                   TLorentzVector jP4 = TLorentzVector( leaves.jetPx[j], leaves.jetPy[j], leaves.jetPz[j], leaves.jetE[j] ) ;
+                   if ( jP4.Pt() < 30. ) continue ;
+                   double dR_ = jP4.DeltaR( gP4 );  
+                   dR = ( dR_ < dR ) ? dR_ : dR ;
+              }
+              if ( dR > 0.5 ) continue ;
 
               for ( int j=0; j<3 ; j++ ) {
                   for ( int r=1; r < 6; r++ ) {
 
                       double theAbsIso_ = IsoDeposit( "gen", k, j, r ) ;
-                      double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
+                      double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max - 0.1 : theAbsIso_ ;
                       double theRelIso_ = theAbsIso_ / gP4.Pt()   ;
-                      double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
+                      double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max - 0.01 : theRelIso_ ;
                       int    theIsohit_ = IsoHits( "gen", k, j, r ) ;
-                      int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
+                      int    theIsohit  = ( theIsohit_ >= isohit_max ) ? isohit_max - 1 : theIsohit_ ;
 
-                      g_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound)  ) ;
-                      g_relIso[r-1]->Fill( theRelIso + (j*reliso_bound)  ) ;
-                      g_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound)   ) ;
-		      if ( j==0 && r == 5 )  g_Pt_relIso5->Fill( gP4.Pt(), theRelIso_ ) ;
-		      if ( j==0 && r == 5 )  g_E_relIso5->Fill(  gP4.E(),  theRelIso_ ) ;
-		      if ( j==0 && r == 5 )  g_Pt_absIso5->Fill( gP4.Pt(), theAbsIso_ ) ;
-		      if ( j==0 && r == 5 )  g_E_absIso5->Fill(  gP4.E(),  theAbsIso_ ) ;
-		      if ( j==2 && r == 1 )  theAbs = theAbsIso_  ;
-		      if ( j==0 && r == 3 )  theRel = theRelIso_  ;
-		      // combined reliso deposit in different depth and dR 
-		      if ( j==0 && r == 2 )  theRel += theRelIso_ ;
-		      if ( j==1 && r == 1 )  theRel += theRelIso_ ;
-		      if ( j==2 && r == 3 )  theRel += theRelIso_ ;
+                      bH.h_abs[j][r-1]->Fill( theAbsIso, scaleFact ) ;
+		      bH.h_rel[j][r-1]->Fill( theRelIso, scaleFact ) ;
+		      bH.h_hit[j][r-1]->Fill( theIsohit, scaleFact ) ;
                   }
               }   
-              g_abs_relIso->Fill( theAbs, theRel ) ;
-              g_relIsoA->Fill( theRel ) ;
            }
        }
- 
-       // get jet hcal deposit      
-       for ( int k =0; k< leaves.nJets ; k++) {
-           TLorentzVector jP4 = TLorentzVector( leaves.jetPx[k], leaves.jetPy[k], leaves.jetPz[k], leaves.jetE[k] ) ;
-           h_JetPt->Fill( jP4.Pt() ) ;
 
-           // looping thruogh 4 depths or 3 different typies
-           double theRel = -1 ;
+       // Match reco and gen muons
+       vector<iMatch> matchV = GlobalDRMatch( recoMuColl, genMuColl ) ;
+       for ( size_t k=0; k < matchV.size(); k++ ) {
+           if ( matchV[k].gid < 0  ) continue ; // exclude un-matched muon
+ 
+           int genMomId =  leaves.momId[  matchV[k].ig ] ;
+           //if ( abs(genMomId) != 24 ) continue ; // exclude those reco muon with "non-W boson" parents 
+           int ir = matchV[k].ir ;
+           if ( abs(genMomId) != 24 ) {
+              h_bmuPt->Fill(  recoMuColl[ matchV[k].rid ].p4.Pt() ) ;
+              h_bmuE->Fill(   recoMuColl[ matchV[k].rid ].p4.E() ) ;
+           } else {
+              h_wmuPt->Fill(  recoMuColl[ matchV[k].rid ].p4.Pt() ) ;
+              h_wmuE->Fill(   recoMuColl[ matchV[k].rid ].p4.E() ) ;
+           }
+           // looping 4 different depths 
+           for ( int j=0; j<3 ; j++ ) {
+               // looping 5 different dR 
+               for ( int r=1; r < 6; r++ ) {
+                   double theAbsIso_ = IsoDeposit( "muon", ir, j, r ) ;
+		   double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max - 0.1 : theAbsIso_ ;
+		   double theRelIso_ = theAbsIso_ / recoMuColl[ matchV[k].rid ].p4.Pt()   ;
+		   double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max - 0.01 : theRelIso_ ;
+		   int    theIsohit_ = IsoHits( "muon", ir, j, r ) ;
+		   int    theIsohit  = ( theIsohit_ >= isohit_max ) ? isohit_max - 1 : theIsohit_ ;
+
+                   if (  abs(genMomId) == 24 ) {
+                      rH.h_abs[j][r-1]->Fill( theAbsIso ) ;
+		      rH.h_rel[j][r-1]->Fill( theRelIso ) ;
+		      rH.h_hit[j][r-1]->Fill( theIsohit ) ;
+                   } else {
+                      jH.h_abs[j][r-1]->Fill( theAbsIso ) ;
+		      jH.h_rel[j][r-1]->Fill( theRelIso ) ;
+		      jH.h_hit[j][r-1]->Fill( theIsohit ) ;
+
+                   }
+               }
+           }
+       }
+       recoMuColl.clear() ;
+       genMuColl.clear() ;
+
+       // get jet hcal deposit      
+       int nGoodJet = 0 ;
+       for ( int k =0; k< leaves.nJets ; k++) {
+           //if ( nGoodJet > 2 ) break ;
+
+           TLorentzVector jP4 = TLorentzVector( leaves.jetPx[k], leaves.jetPy[k], leaves.jetPz[k], leaves.jetE[k] ) ;
+
+           // Jet ID cuts
+           if ( jP4.Pt()        < jetCuts[0] ) continue ;
+           if ( fabs(jP4.Eta()) > jetCuts[1] ) continue ;
+	   if ( leaves.jetNDau[k] < jetCuts[2]  )  continue ;
+	   if ( leaves.jetCEF[k]  > jetCuts[3]  )  continue ;
+	   if ( leaves.jetNEF[k]  > jetCuts[4]  )  continue ;
+	   if ( leaves.jetCHF[k]  > jetCuts[5]  )  continue ;
+	   if ( leaves.jetNHF[k]  > jetCuts[6]  )  continue ;
+	   if ( leaves.jetMEF[k]  > jetCuts[7]  )  continue ;
+	   if ( fabs( jP4.Eta() ) < 2.4 && leaves.jetCM[k]  < 1 ) continue ;
+           h_JetPt->Fill( jP4.Pt() ) ;
+           nGoodJet++ ;
+
+           // looping thruogh 4 depths or 3 different typiesa
+           /*
            for ( int j=0; j<3 ; j++ ) {
                // looping 5 different dR 
                //cout<<" Depth : "<< j+1 <<endl ;
                for ( int r=1; r < 6; ++r ) {
 
 		   double theAbsIso_ = IsoDeposit( "jet", k, j, r ) ;
-                   double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max : theAbsIso_ ;
+                   double theAbsIso  = ( theAbsIso_ > absiso_max ) ? absiso_max - 0.1 : theAbsIso_ ;
                    double theRelIso_ = theAbsIso_ / jP4.Pt()   ;
-                   double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max : theRelIso_ ;
+                   double theRelIso  = ( theRelIso_ > reliso_max ) ? reliso_max - 0.01 : theRelIso_ ;
                    int    theIsohit_ = IsoHits( "jet", k, j, r ) ;
-                   int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max : theIsohit_ ;
+                   int    theIsohit  = ( theIsohit_ > isohit_max ) ? isohit_max - 0.1 : theIsohit_ ;
 
-                   j_absIso[r-1]->Fill( theAbsIso + (j*absiso_bound) ) ;
-                   j_relIso[r-1]->Fill( theRelIso + (j*reliso_bound) ) ;
-                   j_Ihits[r-1]->Fill( theIsohit + (j*isohit_bound) ) ;
-		   // combined reliso deposit in different depth and dR 
-		   if ( j==0 && r == 2 )  theRel += theRelIso_ ;
-		   if ( j==1 && r == 1 )  theRel += theRelIso_ ;
-		   if ( j==2 && r == 3 )  theRel += theRelIso_ ;
+                   jH.h_abs[j][r-1]->Fill( theAbsIso ) ;
+                   jH.h_rel[j][r-1]->Fill( theRelIso ) ;
+                   jH.h_hit[j][r-1]->Fill( theIsohit ) ;
+
                }
            }
-           j_relIsoA->Fill( theRel ) ;
+           */
        }
-
+       h_nJet->Fill( nGoodJet );
    } // end of event looping
 
+   DrawHistograms() ;
+
+   // record file in histogram format
+   theFile->cd() ;
+   HistoWrite( "", theFile ) ;
+   cout<<" historams written ! "<<endl ;
+   theFile->Close() ;
+}
+
+void HcalAna::DrawHistograms( ) { 
    // **************************************** 
    // *           Draw Histograms            *
    // **************************************** 
@@ -357,6 +333,7 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
    // Calculate Background Ratio
    //string hTitle_Rate[3] = { "Depth 1+2+3", "Depth 2+3", "Depth 3" };
    // set histogram's attributions : axis, labelsize(0.05), tickLength(0.03), titleSize(0.04), titleOffset(1)
+
    h_draw->SetHistoAtt("X", 0.05, 0.04, 0.08, 0.5 ) ;
    h_draw->SetHistoAtt("Y", 0.06, 0.04, 0.06, 0 ) ;
    h_draw->SetPlotStyle( false );
@@ -371,9 +348,9 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
        vector<iEff> A_bgRV, R_bgRV, H_bgRV ;
        double count = 0.1 ;
        for ( int idR = 0 ; idR < 5; idR++ ) {
-           iEff bgR_a = BgRatio( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
-           iEff bgR_r = BgRatio( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
-           iEff bgR_h = BgRatio( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
+           iEff bgR_a = BgRatio( wH.h_abs[idep][idR], bH.h_abs[idep][idR] ) ;
+           iEff bgR_r = BgRatio( wH.h_rel[idep][idR], bH.h_rel[idep][idR] ) ;
+           iEff bgR_h = BgRatio( wH.h_hit[idep][idR], bH.h_hit[idep][idR] ) ;
            iEff dRE( count, 0, 0) ;
 
            dRV.push_back( dRE ) ;    
@@ -422,9 +399,9 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
        vector<iEff> dRV  ;
        vector<iEff> A_sgRV, R_sgRV, H_sgRV ;
        for ( int idR = 0 ; idR < 5; idR++ ) {
-           iEff sgR_a = SignalEff( w_absIso[idR], g_absIso[idR], absiso_nbin, idep ) ;
-           iEff sgR_r = SignalEff( w_relIso[idR], g_relIso[idR], reliso_nbin, idep ) ;
-           iEff sgR_h = SignalEff( w_Ihits[idR],  g_Ihits[idR],  isohit_nbin, idep ) ;
+           iEff sgR_a = SignalEff( wH.h_abs[idep][idR], bH.h_abs[idep][idR], 0.30 ) ;
+           iEff sgR_r = SignalEff( wH.h_rel[idep][idR], bH.h_rel[idep][idR], 0.30 ) ;
+           iEff sgR_h = SignalEff( wH.h_hit[idep][idR], bH.h_hit[idep][idR], 0.30 ) ;
            iEff dRE( count, 0, 0) ;
 
            dRV.push_back( dRE ) ;    
@@ -464,155 +441,193 @@ void HcalAna::ReadTree( string dataName, bool reScale  ) {
        delete c_1 ;
        delete mg ;
    }
+
+   // 3.
+   //TGraph* gSB_abs[3] , gSB_rel[3] , gSB_hit[3] ;
+   TGraph* gSB_abs[3]  ;
+   TGraph* gSB_rel[3]  ;
+   TGraph* gSB_hit[3] ;
+   double abs_a[5], rel_a[5], hit_a[5], dR_a[5] ; 
+   for (int idep = 0 ; idep < 3; idep++) {
+       for ( int idR = 0 ; idR < 5; idR++ ) {
+           double abs_best = SBRatio( wH.h_abs[idep][idR], bH.h_abs[idep][idR] ) ;
+           double rel_best = SBRatio( wH.h_rel[idep][idR], bH.h_rel[idep][idR] ) ;
+           double hit_best = SBRatio( wH.h_hit[idep][idR], bH.h_hit[idep][idR] ) ;
+           abs_a[idR] = abs_best ;
+           rel_a[idR] = rel_best ;
+           hit_a[idR] = hit_best ;
+           dR_a[idR] = 0.1*(idR +1.) ;
+       }
+       gSB_abs[idep] = new TGraph( 5, dR_a , abs_a ) ;
+       gSB_rel[idep] = new TGraph( 5, dR_a , rel_a ) ;
+       gSB_hit[idep] = new TGraph( 5, dR_a , hit_a ) ;
+
+       // Set styles
+       gSB_abs[idep]->SetLineColor(2) ; 
+       gSB_rel[idep]->SetLineColor(4) ; 
+       gSB_hit[idep]->SetLineColor(6) ; 
+       gSB_abs[idep]->SetMarkerStyle(20) ; 
+       gSB_rel[idep]->SetMarkerStyle(20) ; 
+       gSB_hit[idep]->SetMarkerStyle(20) ; 
+       gSB_abs[idep]->SetMarkerColor(2) ; 
+       gSB_rel[idep]->SetMarkerColor(4) ; 
+       gSB_hit[idep]->SetMarkerColor(6) ; 
+ 
+       // drawing histograms for background rate
+       char gName[15] ;
+       sprintf( gName, "SBRatio_%d", idep+1 ) ;
+
+       leg1->Clear();
+       leg1->AddEntry( gSB_hit[idep], " Hit  ", "P" ) ;
+       leg1->AddEntry( gSB_abs[idep], "AbsIso", "P" ) ;
+       leg1->AddEntry( gSB_rel[idep], "RelIso", "P" ) ;
+ 
+       TCanvas* c_1  = new TCanvas("c_1","", 800, 600);
+       TMultiGraph *mg = new TMultiGraph();
+       mg->SetTitle( "S / #sqrt{B} Ratio" );
+       mg->Add( gSB_abs[idep] ) ;
+       mg->Add( gSB_rel[idep] ) ;
+       mg->Add( gSB_hit[idep] ) ;
+       mg->SetMaximum(400.) ;
+       mg->SetMinimum(200.) ;
+       mg->Draw("ALP") ;
+       c_1->Update() ;
+       leg1->Draw("same") ;
+       c_1->Update() ;
+       TString graph_name = hfolder + gName + "." + plotType ;
+       c_1->Print( graph_name );
+       delete c_1 ;
+   }
    delete leg1 ;
 
    // some basic information
    cout<<" drawing histograms "<<endl;
    h_draw->SetPlotStyle( true );
-   h_draw->Draw( h_nMu,  "nMuons", "N of Muons",      "", "logY", 0.95, 1 );
-   h_draw->Draw( h_muPt, "muonPt", "muon P_{T} (GeV/c)", "", "logY", 0.95, 1 );
+   h_draw->Draw( h_nVtx,  "nVertices", "N of Vertices",  "", "logY", 0.95, 1 );
+   h_draw->Draw( h_nMu,   "nMuons", "N of Muons",        "", "logY", 0.95, 1 );
+   h_draw->Draw( h_nJet,  "nJets", "N of jets",        "", "logY", 0.95, 1 );
+   h_draw->Draw( h_wmuPt, "wmuonPt", "muon P_{T} from W (GeV/c)", "", "logY", 0.95, 1 );
+   h_draw->Draw( h_bmuPt, "bmuonPt", "muon P_{T} from b (GeV/c)", "", "logY", 0.95, 1 );
    h_draw->Draw( h_JetPt, "jetPt", "jet P_{T} (GeV/c)", "", "logY", 0.95, 1 );
-   h_draw->Draw( h_muE,  "muonE",  "muon E (GeV)",    "", "logY", 0.95, 1 );
+   h_draw->Draw( h_wmuE,  "wmuonE",  "muon E from W (GeV)",    "", "logY", 0.95, 1 );
+   h_draw->Draw( h_bmuE,  "bmuonE",  "muon E from b (GeV)",    "", "logY", 0.95, 1 );
 
-   // set histogram's attributions : axis, labelsize(0.05), tickLength(0.03), titleSize(0.04), titleOffset(1)
-   h_draw->SetHistoAtt("X", 0.1, 0.07, 0.08, 1. ) ;
-   h_draw->SetHistoAtt("Y", 0.1, 0.02, 0.1, 0 ) ;
-   h_draw->SetPlotStyle( true, 0.1, 0.12, 0.1, 0.1 ) ;
-   h_draw->CreateNxM( "AbsIsoDR1", 1,4 );
-   h_draw->DrawNxM( 1, w_absIso[0], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[0], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_absIso[0], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_absIso[0], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   h_draw->CreateNxM( "AbsIsoDR2", 1,4 );
-   h_draw->DrawNxM( 1, w_absIso[1], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[1], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_absIso[1], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_absIso[1], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+   h_draw->SetPlotStyle(false) ;
+   TLegend* leg2  = new TLegend(.5, .7, .9, .9 );
+   char RStr0[50], RStr1[50], RStr2[50], RStr3[50] ;
+   char fname[25] ;   
 
-   h_draw->CreateNxM( "AbsIsoDR3", 1,4 );
-   h_draw->DrawNxM( 1, w_absIso[2], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[2], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_absIso[2], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_absIso[2], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+   for ( int i=0; i  < 5 ; i++) {
+       for ( int j=0; j  < 3 ; j++) {
 
-   h_draw->CreateNxM( "AbsIsoDR4", 1,4 );
-   h_draw->DrawNxM( 1, w_absIso[3], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[3], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_absIso[3], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_absIso[3], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+           sprintf( RStr0, "(W) Depth%d = %.2f ", j,  wH.h_abs[j][i]->Integral( 10, 100) / wH.h_abs[j][i]->Integral() ) ;
+	   sprintf( RStr1, "(B) Depth%d = %.2f ", j,  bH.h_abs[j][i]->Integral( 10, 100) / bH.h_abs[j][i]->Integral() ) ;
+	   sprintf( RStr2, "(J) Depth%d = %.2f ", j,  jH.h_abs[j][i]->Integral( 10, 100) / jH.h_abs[j][i]->Integral() ) ;
+	   sprintf( RStr3, "(R) Depth%d = %.2f ", j,  rH.h_abs[j][i]->Integral( 10, 100) / rH.h_abs[j][i]->Integral() ) ;
+	   leg2->AddEntry( wH.h_abs[j][i], RStr0 , "L" ) ;
+	   leg2->AddEntry( bH.h_abs[j][i], RStr1 , "L" ) ;
+	   leg2->AddEntry( jH.h_abs[j][i], RStr2 , "L" ) ;
+	   leg2->AddEntry( rH.h_abs[j][i], RStr3 , "L" ) ;
 
-   h_draw->CreateNxM( "AbsIsoDR5", 1,4 );
-   h_draw->DrawNxM( 1, w_absIso[4], "abs. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_absIso[4], "abs. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_absIso[4], "abs. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_absIso[4], "abs. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+	   sprintf( fname,   "AbsIsoDR%d_L%d", i+1, j ) ;
+	   h_draw->Draw(       wH.h_abs[j][i],  "",  "Abs. Isolation",  "", "logY", 0.95, 1 );
+	   h_draw->DrawAppend( bH.h_abs[j][i],  "",      0.75, 2      );
+	   h_draw->DrawAppend( jH.h_abs[j][i],  "",      0.55, 6      );
+	   h_draw->DrawAppend( rH.h_abs[j][i],  fname,   0.35, 4, leg2 );
+	   leg2->Clear() ;
 
-   // RelIso
-   h_draw->CreateNxM( "RelIsoDR1", 1,4 );
-   h_draw->DrawNxM( 1, w_relIso[0], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[0], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[0], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[0], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+           sprintf( RStr0, "(W) Depth%d = %.2f ", j,  wH.h_rel[j][i]->Integral( 5, 100) / wH.h_rel[j][i]->Integral() ) ;
+	   sprintf( RStr1, "(B) Depth%d = %.2f ", j,  bH.h_rel[j][i]->Integral( 5, 100) / bH.h_rel[j][i]->Integral() ) ;
+	   sprintf( RStr2, "(J) Depth%d = %.2f ", j,  jH.h_rel[j][i]->Integral( 5, 100) / jH.h_rel[j][i]->Integral() ) ;
+	   sprintf( RStr3, "(R) Depth%d = %.2f ", j,  rH.h_rel[j][i]->Integral( 5, 100) / rH.h_rel[j][i]->Integral() ) ;
+	   leg2->AddEntry( wH.h_rel[j][i], RStr0 , "L" ) ;
+	   leg2->AddEntry( bH.h_rel[j][i], RStr1 , "L" ) ;
+	   leg2->AddEntry( jH.h_rel[j][i], RStr2 , "L" ) ;
+	   leg2->AddEntry( rH.h_rel[j][i], RStr3 , "L" ) ;
 
-   h_draw->CreateNxM( "RelIsoDR2", 1,4 );
-   h_draw->DrawNxM( 1, w_relIso[1], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[1], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[1], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[1], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+	   sprintf( fname,   "RelIsoDR%d_L%d", i+1, j ) ;
+	   h_draw->Draw(       wH.h_rel[j][i],  "",  "Rel. Isolation",  "", "logY", 0.95, 1 );
+	   h_draw->DrawAppend( bH.h_rel[j][i],  "",      0.75, 2      );
+	   h_draw->DrawAppend( jH.h_rel[j][i],  "",      0.55, 6      );
+	   h_draw->DrawAppend( rH.h_rel[j][i],  fname,   0.35, 4, leg2 );
+	   leg2->Clear() ;
 
-   h_draw->CreateNxM( "RelIsoDR3", 1,4 );
-   h_draw->DrawNxM( 1, w_relIso[2], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[2], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[2], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[2], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+           sprintf( RStr0, "(W) Depth%d = %.2f ", j,  wH.h_hit[j][i]->Integral( 5, 50) / wH.h_hit[j][i]->Integral() ) ;
+	   sprintf( RStr1, "(B) Depth%d = %.2f ", j,  bH.h_hit[j][i]->Integral( 5, 50) / bH.h_hit[j][i]->Integral() ) ;
+	   sprintf( RStr2, "(J) Depth%d = %.2f ", j,  jH.h_hit[j][i]->Integral( 5, 50) / jH.h_hit[j][i]->Integral() ) ;
+	   sprintf( RStr3, "(R) Depth%d = %.2f ", j,  rH.h_hit[j][i]->Integral( 5, 50) / rH.h_hit[j][i]->Integral() ) ;
+	   leg2->AddEntry( wH.h_hit[j][i], RStr0 , "L" ) ;
+	   leg2->AddEntry( bH.h_hit[j][i], RStr1 , "L" ) ;
+	   leg2->AddEntry( jH.h_hit[j][i], RStr2 , "L" ) ;
+	   leg2->AddEntry( rH.h_hit[j][i], RStr3 , "L" ) ;
 
-   h_draw->CreateNxM( "RelIsoDR4", 1,4 );
-   h_draw->DrawNxM( 1, w_relIso[3], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[3], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[3], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[3], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
+	   sprintf( fname,   "IsoHitDR%d_L%d", i+1, j ) ;
+	   h_draw->Draw(       wH.h_hit[j][i],  "",  "Isolation Hits",  "", "logY", 0.95, 1 );
+	   h_draw->DrawAppend( bH.h_hit[j][i],  "",      0.75, 2      );
+	   h_draw->DrawAppend( jH.h_hit[j][i],  "",      0.55, 6      );
+	   h_draw->DrawAppend( rH.h_hit[j][i],  fname,   0.35, 4, leg2 );
+	   leg2->Clear() ;
+       }
+   }
 
-   h_draw->CreateNxM( "RelIsoDR5", 1,4 );
-   h_draw->DrawNxM( 1, w_relIso[4], "rel. Isolation for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_relIso[4], "rel. Isolation for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_relIso[4], "rel. Isolation for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_relIso[4], "rel. Isolation for reco jet",   "", "logY", 1, 0.1, 0.1, true );
 
-   // isohits
-   h_draw->CreateNxM( "IsoHitsDR1", 1,4 );
-   h_draw->DrawNxM( 1, w_Ihits[0], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[0], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[0], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[0], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "IsoHitsDR2", 1,4 );
-   h_draw->DrawNxM( 1, w_Ihits[1], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[1], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[1], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[1], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "IsoHitsDR3", 1,4 );
-   h_draw->DrawNxM( 1, w_Ihits[2], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[2], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[2], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[2], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "IsoHitsDR4", 1,4 );
-   h_draw->DrawNxM( 1, w_Ihits[3], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[3], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[3], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[3], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
-
-   h_draw->CreateNxM( "IsoHitsDR5", 1,4 );
-   h_draw->DrawNxM( 1, w_Ihits[4], "N of Isohits for gen W muon", "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 2, g_Ihits[4], "N of Isohits for gen muon",   "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 3, r_Ihits[4], "N of Isohits for reco muon",  "", "logY", 1, 0.1, 0.1, false );
-   h_draw->DrawNxM( 4, j_Ihits[4], "N of Isohits for reco jet",   "", "logY", 1, 0.1, 0.1, true );
-
-   //h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
-   //h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
-
-   // set histogram's attributions : axis, labelsize, tickLength, titleSize, titleOffset   
-   h_draw->SetHistoAtt("X", 0.1, 0.07, 0.08, 1. ) ;
-   h_draw->SetHistoAtt("Y", 0.1, 0.02, 0.08, 0.5 ) ;
-
-   gStyle->SetStatX( 0.9 ) ;
-   h_draw->CreateNxM( "PtRelIso", 1,3 );
-   h_draw->DrawNxM( 1, w_Pt_relIso5,  "Pt (GeV)", "RelIso ", "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 2, g_Pt_relIso5,  "Pt (GeV)", "RelIso ", "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 3, h_Pt_relIso5,  "Pt (GeV)", "RelIso ", "", 5, 0.1, 0.06, true );
-
-   h_draw->CreateNxM( "ERelIso", 1,3 );
-   h_draw->DrawNxM( 1, w_E_relIso5,   "E (GeV)", "RelIso ",  "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 2, g_E_relIso5,   "E (GeV)", "RelIso ",  "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 3, h_E_relIso5,   "E (GeV)", "RelIso ",  "", 5, 0.1, 0.05, true );
-
-   h_draw->CreateNxM( "PtAbsIso", 1,3 );
-   h_draw->DrawNxM( 1, w_Pt_absIso5,  "Pt (GeV)", "AbsIso ", "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 2, g_Pt_absIso5,  "Pt (GeV)", "AbsIso ", "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 3, h_Pt_absIso5,  "Pt (GeV)", "AbsIso ", "", 5, 0.1, 0.06, true );
-
-   h_draw->CreateNxM( "EAbsIso", 1,3 );
-   h_draw->DrawNxM( 1, w_E_absIso5,   "E (GeV)", "AbsIso ",  "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 2, g_E_absIso5,   "E (GeV)", "AbsIso ",  "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 3, h_E_absIso5,   "E (GeV)", "AbsIso ",  "", 5, 0.1, 0.05, true );
-
-   h_draw->CreateNxM( "Abs1_Rel3", 1,3 );
-   h_draw->DrawNxM( 1, w_abs_relIso,   "AbsIso", "RelIso ",  "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 2, g_abs_relIso,   "AbsIso", "RelIso ",  "", 5, 0.1, 0.06, false );
-   h_draw->DrawNxM( 3, h_abs_relIso,   "AbsIso", "RelIso ",  "", 5, 0.1, 0.05, true );
-
-   h_draw->SetHistoAtt("X", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
-   h_draw->SetHistoAtt("Y", 0, 0, 0, 0 ) ; // reset to histogram attributions to default 
-
-   // record file in histogram format
-   theFile->cd() ;
-   HistoWrite( "", theFile ) ;
-   cout<<" historams written ! "<<endl ;
-   theFile->Close() ;
 } 
+
+void HcalAna::OpenHistograms() {
+
+     TString Path_fName = hfolder + hfName + ".root" ;
+     cout<<" Opening : "<< Path_fName <<endl ;
+
+     theFile = (TFile*) TFile::Open( Path_fName , "READ" );
+     //hFile->cd() ;
+     cout<<" file opened ! "<<endl ;
+
+     h_nMu     = (TH1D*) theFile->Get("h_nMu")     ;
+     h_nJet    = (TH1D*) theFile->Get("h_nJet")     ;
+     h_nVtx    = (TH1D*) theFile->Get("h_nVtx")     ;
+     h_bmuPt   = (TH1D*) theFile->Get("h_bmuPt")     ;
+     h_wmuPt   = (TH1D*) theFile->Get("h_wmuPt")     ;
+     h_bmuE    = (TH1D*) theFile->Get("h_bmuE")     ;
+     h_wmuE    = (TH1D*) theFile->Get("h_wmuE")     ;
+     h_JetPt   = (TH1D*) theFile->Get("h_JetPt")     ;
+
+     char hname_a[20],  hname_r[20], hname_h[20]  ;
+     for ( int j=0; j< 4 ; j++) {
+         for ( int k=0; k< 5 ; k++) {
+	     sprintf( hname_a,   "w_abs_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_r,   "w_rel_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_h,   "w_hit_D%dR%d", j+1, k+1 ) ;
+             wH.h_abs[j][k] = (TH1D*) theFile->Get( hname_a ) ;
+             wH.h_rel[j][k] = (TH1D*) theFile->Get( hname_r ) ;
+             wH.h_hit[j][k] = (TH1D*) theFile->Get( hname_h ) ;
+
+	     sprintf( hname_a,   "b_abs_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_r,   "b_rel_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_h,   "b_hit_D%dR%d", j+1, k+1 ) ;
+             bH.h_abs[j][k] = (TH1D*) theFile->Get( hname_a ) ;
+             bH.h_rel[j][k] = (TH1D*) theFile->Get( hname_r ) ;
+             bH.h_hit[j][k] = (TH1D*) theFile->Get( hname_h ) ;
+
+	     sprintf( hname_a,   "r_abs_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_r,   "r_rel_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_h,   "r_hit_D%dR%d", j+1, k+1 ) ;
+             rH.h_abs[j][k] = (TH1D*) theFile->Get( hname_a ) ;
+             rH.h_rel[j][k] = (TH1D*) theFile->Get( hname_r ) ;
+             rH.h_hit[j][k] = (TH1D*) theFile->Get( hname_h ) ;
+
+	     sprintf( hname_a,   "j_abs_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_r,   "j_rel_D%dR%d", j+1, k+1 ) ;
+	     sprintf( hname_h,   "j_hit_D%dR%d", j+1, k+1 ) ;
+             jH.h_abs[j][k] = (TH1D*) theFile->Get( hname_a ) ;
+             jH.h_rel[j][k] = (TH1D*) theFile->Get( hname_r ) ;
+             jH.h_hit[j][k] = (TH1D*) theFile->Get( hname_h ) ;
+
+         }
+     }
+}
  
+
 double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double offset, double scale ) { 
 
    //absolute isolation
@@ -623,7 +638,6 @@ double HcalAna::IsoDeposit( string type, int mu_id, int depth, int dR_i, double 
    for ( int j=3; j >= 0; j--) {
        if ( isoMethod == 0 && j != depth ) continue ;
        if ( isoMethod == 2 && j  < depth ) continue ;
-       if ( isoMethod == 3 && j  > depth ) continue ;
 
        if ( strncasecmp( "muon", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
           if ( dR_i == 1 )  Iso_ = leaves.muIso1[mu_id][j] ;
@@ -667,7 +681,6 @@ int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, i
    for ( int j=3; j >= 0; j--) {
        if ( isoMethod == 0 && j != depth ) continue ;
        if ( isoMethod == 2 && j  < depth ) continue ;
-       if ( isoMethod == 3 && j  > depth ) continue ;
 
        if ( strncasecmp( "muon", type.c_str(), type.size() ) ==0 && type.size() > 0 ) {
           if ( dR_i == 1 )  Ihit_ = leaves.muIhit1[mu_id][j] ;
@@ -706,13 +719,11 @@ int HcalAna::IsoHits( string type, int mu_id, int depth, int dR_i, int offset, i
 }
 
 // depth : 0 ~ 4, 
-iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
+iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, double sgEff ) { 
 
-    int bin1 = 1 + depth*( nbin/4 ) ;
-    int bin2= (depth+1)*( nbin/4 ) ; 
-    double totalS = hS->Integral( bin1, bin2 ) ;
-    double totalB = hB->Integral( bin1, bin2 ) ;
-    printf("*** BGRate from %d ~ %d : Intgral S: %.2f, B: %.2f \n", bin1, bin2, totalS, totalB ) ;
+    double totalS = hS->Integral() ;
+    double totalB = hB->Integral() ;
+    printf("*** BGRate under %f Intgral S: %.2f, B: %.2f \n", sgEff, totalS, totalB ) ;
 
     iEff bRs ;
     if ( totalS == (double)0 || totalB == (double)0 ) return bRs ;
@@ -724,29 +735,27 @@ iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     double last_subS = 0 ;
     double last_subB = 0 ;
     double last_sR   = 0 ;
-    int binx = bin1 ;
+    int binx = 1 ;
     do { 
         last_sR   = sR ;
         last_subB = subB ;
         last_subS = subS ;
-        subS   = hS->Integral( bin1, binx ) ;
-        subB   = hB->Integral( bin1, binx ) ;
+        subS   = hS->Integral( 1, binx ) ;
+        subB   = hB->Integral( 1, binx ) ;
         sR =  subS / totalS ;
         bR =  subB / totalB ;
         printf(" bin: %d, S: %.1f sR: %.2f , B: %.1f bR: %.2f \n", binx, subS, (subS/totalS) , subB , (subB/totalB) ) ;
         binx++ ;
-    } while ( sR < 0.95 ) ;
+    } while ( sR < sgEff ) ;
     
     double slope  = ( subB - last_subB ) / ( sR - last_sR ) ;
-    double subB95 = slope*( 0.95 - last_sR ) + last_subB ;
+    double subB95 = slope*( sgEff - last_sR ) + last_subB ;
     printf("** b1: %.1f ( %.3f) < b: %1.f ( %.3f) < b2: %.1f ( %.3f) \n", 
              last_subB, last_subB/totalB, subB95, subB/totalB, subB, bR ) ;
     printf("** s1: %.1f ( %.3f) <         ( 0.95) < s2: %.1f ( %.3f) \n", 
              last_subS, last_subS/totalS,         subS, sR ) ;
 
     pair<double,double> bR_Err = h_draw->EffError( totalB, subB95 );
-    //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
-    //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
     bRs.eff = subB95 / totalB ;
     //bRs.eff = bR ;
@@ -755,13 +764,12 @@ iEff HcalAna::BgRatio( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     return bRs ;
 }
 
-iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) { 
+// The signal efficiency under the assumption of bgRate ( background comtamination )
+iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB,  double bgRate ) { 
 
-    int bin1 = 1 + depth*( nbin/4 ) ;
-    int bin2= (depth+1)*( nbin/4 ) ; 
-    double totalS = hS->Integral( bin1, bin2 ) ;
-    double totalB = hB->Integral( bin1, bin2 ) ;
-    printf("*** SgEff from %d ~ %d : Intgral S: %.2f, B: %.2f \n", bin1, bin2, totalS, totalB ) ;
+    double totalS = hS->Integral() ;
+    double totalB = hB->Integral() ;
+    printf("*** SgEff under bgRate %f : Intgral S: %.2f, B: %.2f \n", bgRate, totalS, totalB ) ;
 
     iEff sRs ;
     if ( totalS == (double)0 || totalB == (double)0 ) return sRs ;
@@ -770,7 +778,7 @@ iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     double bR = 0 ;
     double subS = 0 ;
     double subB = 0 ;
-    int binx = bin1 ;
+    int binx = 1 ;
     double last_subS = 0 ;
     double last_subB = 0 ;
     double last_bR   = 0 ;
@@ -778,16 +786,16 @@ iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) {
         last_bR   = bR ;
         last_subB = subB ;
         last_subS = subS ;
-        subS   = hS->Integral( bin1, binx ) ;
-        subB   = hB->Integral( bin1, binx ) ;
+        subS   = hS->Integral( 1, binx ) ;
+        subB   = hB->Integral( 1, binx ) ;
         sR =  subS / totalS ;
         bR =  subB / totalB ;
         printf(" bin: %d, S: %.1f sR: %.2f , B: %.1f bR: %.2f \n", binx, subS, (subS/totalS) , subB , (subB/totalB) ) ;
         binx++ ;
-    } while ( bR < 0.10 ) ;
+    } while ( bR < bgRate ) ;
 
     double slope  = ( subS - last_subS ) / ( bR - last_bR ) ;
-    double subS10 = slope*( 0.1 - last_bR ) + last_subS ;
+    double subS10 = slope*( bgRate - last_bR ) + last_subS ;
     printf("** s1: %.1f ( %.3f) < s: %.1f ( %.3f) < s2: %.1f ( %.3f) \n", 
               last_subS, last_subS/totalS, subS10, subS10/totalS ,subS, sR ) ;
     printf("** b1: %.1f ( %.3f) <         ( 0.1 ) < b2: %.1f ( %.3f) \n", 
@@ -795,8 +803,6 @@ iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) {
 
 
     pair<double,double> sR_Err = h_draw->EffError( totalS, subS10 );
-    //printf("depth: %d, b1: %d, b2: %d,   S: %.1f, B: %.1f, sR: %.2f, bR: %.2f \n", 
-    //        depth,     bin1,   bin2,      totalS,  totalB, sR,       bR ) ;
     
     sRs.eff = subS10 / totalS  ;
     //sRs.eff = sR  ;
@@ -806,6 +812,51 @@ iEff HcalAna::SignalEff( TH1D* hS, TH1D* hB, int nbin, int depth ) {
     return sRs ;
 }
 
+// Find the cut for highest SB Ratio
+double HcalAna::SBRatio( TH1D* hS, TH1D* hB ) { 
+
+    double totalS = hS->Integral() ;
+    double totalB = hB->Integral() ;
+    printf(" ***** Max S/sqrt(B) Ratio ***** \n" ) ;
+
+    //iEff sRs ;
+    //if ( totalS == (double)0 || totalB == (double)0 ) return sRs ;
+
+    double sR = 0 ;
+    double bR = 0 ;
+    double subS = 0 ;
+    double subB = 0 ;
+    int binx = 1 ;
+    double maxSB  = 0 ;
+    double max_sR = 0 ;
+    double max_bR = 0 ;
+ 
+    for ( int i=1; i <= hS->GetNbinsX() ; i++ ) {
+    
+        subS   = hS->Integral( 1, i ) ;
+        subB   = hB->Integral( 1, i ) ;
+        sR =  subS / totalS ;
+        bR =  subB / totalB ;
+        if ( sR > 0.5 ) {
+           double maxSB_ = subS / sqrt( subB ) ;
+           if ( maxSB_ > maxSB ) {
+              maxSB = maxSB_ ; 
+              binx = i ;
+              max_sR = sR ;
+              max_bR = bR ;
+           }
+        }
+
+    } 
+    printf(" bin: %d, S/B: %.2f sR: %.2f , bR: %.2f \n", binx, maxSB, max_sR , max_bR ) ;
+
+    //return binx ;
+    return maxSB ;
+    //return sRs ;
+}
+
+
+// matching reco and generated objects - search for the minimum total dR for all objects 
 vector<iMatch> HcalAna::GlobalDRMatch( vector<objID> vr, vector<objID> vg ) {
 
     vector<int> pool ;
@@ -827,13 +878,16 @@ vector<iMatch> HcalAna::GlobalDRMatch( vector<objID> vr, vector<objID> vg ) {
         //cout<<" ( " ;
         for ( size_t j=0; j< vr.size() ; j++ ) {
             if ( pool[j] == -1 ) continue ;
-            double dr_ = vr[j].second.DeltaR( vg[ pool[j] ].second ) ;
-            iM0.idg  = pool[j] ;
-            iM0.idr  = j ;
-            iM0.ig  = vg[ pool[j] ].first ;
-            iM0.ir  = vr[ j ].first ;
-            iM0.dr  = dr_ ;
-            iM0.dPt = ( vr[j].second.Pt() - vg[ pool[j] ].second.Pt() ) / vg[ pool[j] ].second.Pt()  ;
+            double dr_ = vr[j].p4.DeltaR( vg[ pool[j] ].p4 ) ;
+
+            iM0.gid  = pool[j] ;
+            iM0.rid  = j ;
+            iM0.ig   = vg[ pool[j] ].it ;
+            iM0.ir   = vr[ j ].it ;
+            iM0.dr   = dr_ ;
+            iM0.dPt  = vr[j].p4.Pt() - vg[ pool[j] ].p4.Pt()  ;
+            iM0.type = vr[j].type ; 
+
             vMatch0.push_back( iM0 ) ;
             dr2 += (dr_*dr_) ;
             //cout<< j <<", " ;
@@ -856,77 +910,142 @@ void HcalAna::WriteMuonPtReWeighting( string dataName ) {
 
    cout<<" Get Muon Pt ReWeighting "<< endl ;
 
-   // 1. Get Signal and background muon pt spectrum
-   TTree* tr = Input->TreeMap( dataName );
+   // Get tree
+   string dataFileNames ;
+   if ( dataName != "0" ) {
+      dataFileNames = dataName ;
+   } else {
+      Input->GetParameters( "TheData", &dataFileNames );
+   }
+   TTree* tr   = Input->GetTree( dataFileNames, "HcalUpgrade" );
+
+   // Set addresses
    setBranchAddresses( tr, leaves );
 
    int totalN = tr->GetEntries();
    cout<<" from  "<< dataName <<" total entries = "<< totalN <<" Process "<< ProcessEvents <<endl;
 
-   TH1D* g_muPt  = new TH1D("g_muPt",  " Gen Muon Pt distribution ", 25, 0, 250 );
+   TH1D* g_muPt  = new TH1D("g_muPt",  " Gen Muon Pt distribution ",   25, 0, 250 );
    TH1D* w_muPt  = new TH1D("w_muPt",  " Gen W Muon Pt distribution ", 25, 0, 250 );
+   TH1D* h_jetPt = new TH1D("h_jetPt", " Jet Pt distribution ",        25, 0, 250 );
 
+   
+   // Get the Pt spectrum for muon and jet
+   double pt_cut = 10. ;
+   double eta_cut = 0.8 ;
    for ( int i=0; i< totalN ; i++ ) {
        if ( ProcessEvents > 0 && i > ( ProcessEvents - 1 ) ) break;
        tr->GetEntry( i );
+
+       // Get signal and background muon pt spectrum
        for ( int k=0; k< leaves.nGen; k++) {
            TLorentzVector gP4 = TLorentzVector( leaves.genPx[k], leaves.genPy[k], leaves.genPz[k], leaves.genE[k] ) ;
-           if ( gP4.Pt() < muonCuts[0] || gP4.Pt() > muonCuts[1] ) continue ;
-           if ( fabs( gP4.Eta() ) > muonCuts[2] ) continue ;
+           // Select muons in different pt and eta range
+           if ( gP4.Pt() < pt_cut ) continue ;
+           if ( fabs( gP4.Eta() ) > eta_cut ) continue ;
 
-           double theP4 = ( gP4.Pt() > 249 ) ? 249.9 : gP4.Pt() ;
+           double theP4 = ( gP4.Pt() > 249.9 ) ? 249.9 : gP4.E() ;
            if ( abs( leaves.momId[k]) == 24 ) w_muPt->Fill( theP4 ) ; // signal 
            else                               g_muPt->Fill( theP4 ) ; // background 
            
        }
+
+       // Get jet pt spectrum
+       for ( int k =0; k< leaves.nJets ; k++) {
+           TLorentzVector jP4 = TLorentzVector( leaves.jetPx[k], leaves.jetPy[k], leaves.jetPz[k], leaves.jetE[k] ) ;
+           // Jet ID cuts
+           if ( jP4.Pt()          < pt_cut  ) continue ;
+           if ( fabs(jP4.Eta())   > eta_cut ) continue ;
+	   if ( leaves.jetNDau[k] < jetCuts[2]  )  continue ;
+	   if ( leaves.jetCEF[k]  > jetCuts[3]  )  continue ;
+	   if ( leaves.jetNEF[k]  > jetCuts[4]  )  continue ;
+	   if ( leaves.jetCHF[k]  > jetCuts[5]  )  continue ;
+	   if ( leaves.jetNHF[k]  > jetCuts[6]  )  continue ;
+	   if ( leaves.jetMEF[k]  > jetCuts[7]  )  continue ;
+	   if ( fabs( jP4.Eta() ) < 2.4 && leaves.jetCM[k]  < 1 ) continue ;
+           double theP4 = ( jP4.Pt() > 249.9 ) ? 249.9 : jP4.E() ;
+           h_jetPt->Fill( theP4 ) ;
+       }
    }
 
-   h_draw->Draw(       g_muPt, "", "muon P_{T} (GeV/c)", "", "logY", 0.95, 2 );
-   h_draw->DrawAppend( w_muPt, "genMuonPt", 0.75, 4 );
-
    // 2. Calculate and record the scaling factor
-   FILE* logfile = fopen( "MuPtReWeight.log" ,"w"); 
+   string scaleFileName = scaleFile ;
+   scaleFileName += ".log" ;
+   FILE* logfile = fopen( scaleFileName.c_str() ,"w"); 
+
    TH1D* h1_ = (TH1D*) g_muPt->Clone() ;
    TH1D* h2_ = (TH1D*) w_muPt->Clone() ;
+   TH1D* h3_ = (TH1D*) h_jetPt->Clone() ;
 
    h1_->Scale( 1./ g_muPt->Integral() ) ;
    h2_->Scale( 1./ w_muPt->Integral() ) ;
+   h3_->Scale( 1./ h_jetPt->Integral() ) ;
 
+   h_draw->Draw(       h1_, "", "Muon P_{T} (GeV/c)", "", "logY", 0.95, 2 );
+   h_draw->DrawAppend( h3_, "",          0.75, 4 );
+   h_draw->DrawAppend( h2_, "genMuonPt", 0.55, 1 );
+
+   // Get the turn-on bin and value
    int nbin = h1_->GetNbinsX() ;
+   /*
+   double thresholdVal = 0 ;
+   int    turnOnBin    = 0 ; 
+   for ( int i=1 ; i <= nbin ; i++ ) {
+       double x1 = h1_->GetBinContent( i ) ;
+       if ( x1 > 0. ) {
+          thresholdVal = x1 ;
+          turnOnBin = i ;
+          break ;
+       }
+   }
+   */
+
+   // get the normalization values 
    for ( int i=1 ; i <= nbin ; i++ ) {
        double x1 = h1_->GetBinCenter( i ) ;
        double w1 = h1_->GetBinWidth( i ) ;
        double b1 = h1_->GetBinContent( i ) ;
        double b2 = h2_->GetBinContent( i ) ;
-       double sc = ( b2 < 0.000001 ) ? 0 :  b1/b2 ;  
-       fprintf(logfile," %1d %.1f %.1f  %.3f \n", i,  x1-(w1/2), x1+(w1/2),  sc ) ;
+       double b3 = h3_->GetBinContent( i ) ;
+       double sc1 = ( b1 < 0.000001 ) ? 0 :  b2/b1 ;  
+       double sc3 = ( b3 < 0.000001 ) ? 0 :  b2/b3 ;  
+       //if ( i < turnOnBin && b2 > 0 ) sc = thresholdVal / b2 ;
+       fprintf(logfile," %1d %.1f %.1f  %.3f %.3f \n", i,  x1-(w1/2), x1+(w1/2),  sc1, sc3 ) ;
    }
  
+   delete h_jetPt ;
    delete g_muPt ;
    delete w_muPt ;
    fclose( logfile ) ;
-
 }
 
+
+// Read muon pt reweighting from the log file
 void HcalAna::ReadMuonPtReWeighting( ) {
 
-   FILE* logfile = fopen( "MuPtReWeight.log" ,"r"); 
+   //FILE* logfile = fopen( "MuPtReWeight_jet.log" ,"r"); 
+   string scaleFileName = scaleFile ;
+   scaleFileName += ".log" ;
+   FILE* logfile = fopen( scaleFileName.c_str() ,"r"); 
    int ibin, r1 ;
-   float ptl , ptu , sf ;
+   float ptl , ptu , sf1, sf3 ;
    for ( int i = 0; i < 25 ; i++ ) {
        r1 = fscanf(logfile, "%d", &ibin );
        r1 = fscanf(logfile, "%f", &ptl  );
        r1 = fscanf(logfile, "%f", &ptu  );
-       r1 = fscanf(logfile, "%f", &sf   );
+       r1 = fscanf(logfile, "%f", &sf1   );
+       r1 = fscanf(logfile, "%f", &sf3   );
        muPt_l[i] = ptl ;
        muPt_h[i] = ptu ;
-       scaleF[i] = sf  ;
+       scaleF[i] = sf1  ;
+       //scaleF[i] = sf3  ;
        if ( r1 != 1 ) cout<<" reading error "<<endl ;
    }
 
    fclose( logfile ) ;
 }
 
+// return the corresponding scale for different muon pt
 double HcalAna::GetMuonPtReWeighting( double muPt ) {
 
        int i = muPt / 10  ;
@@ -941,52 +1060,35 @@ void HcalAna::HistoWrite(  string theFolder , TFile* file ) {
 
     if ( theFolder.size() > 0 ) file->cd( theFolder.c_str() ); 
 
+    h_nVtx->Write()   ;
     h_nMu->Write()   ;
-    h_muE->Write()   ;
-    h_muPt->Write()  ;
+    h_nJet->Write()   ;
+    h_wmuE->Write()   ;
+    h_bmuE->Write()   ;
+    h_wmuPt->Write()  ;
+    h_bmuPt->Write()  ;
     h_JetPt->Write() ;
 
-    g_Pt_relIso5->Write()  ;
-    g_E_relIso5->Write()   ;
-    w_Pt_relIso5->Write()  ;
-    w_E_relIso5->Write()   ;
-    h_Pt_relIso5->Write()  ;
-    h_E_relIso5->Write()   ;
-
-    g_Pt_absIso5->Write() ;
-    g_E_absIso5->Write()  ;
-    w_Pt_absIso5->Write() ;
-    w_E_absIso5->Write()  ;
-    h_Pt_absIso5->Write() ;
-    h_E_absIso5->Write()  ;
-
-    h_abs_relIso->Write() ;
-    w_abs_relIso->Write() ;
-    g_abs_relIso->Write() ;
-
-    for ( int i=0; i< 5 ; i++) {
-        r_absIso[i]->Write() ;
-	r_relIso[i]->Write() ;
-	r_Ihits[i]->Write() ;
-	g_absIso[i]->Write() ;
-	g_relIso[i]->Write() ;
-	g_Ihits[i]->Write() ;
-	w_absIso[i]->Write() ;
-	w_relIso[i]->Write() ;
-	w_Ihits[i]->Write() ;
-	j_absIso[i]->Write() ;
-	j_relIso[i]->Write() ;
-	j_Ihits[i]->Write() ;
-    }
-
     for ( int i=0; i< 4 ; i++) {
-        AbsBgRate[i]->Write()  ;
-	RelBgRate[i]->Write()  ;
-	HitBgRate[i]->Write()  ;
+        for ( int j=0; j< 5 ; j++) {
+            wH.h_abs[i][j]->Write() ;
+            wH.h_rel[i][j]->Write() ;
+            wH.h_hit[i][j]->Write() ;
 
-        AbsSgRate[i]->Write()  ;
-	RelSgRate[i]->Write()  ;
-	HitSgRate[i]->Write()  ;
+            bH.h_abs[i][j]->Write() ;
+            bH.h_rel[i][j]->Write() ;
+            bH.h_hit[i][j]->Write() ;
+
+            rH.h_abs[i][j]->Write() ;
+            rH.h_rel[i][j]->Write() ;
+            rH.h_hit[i][j]->Write() ;
+
+            jH.h_abs[i][j]->Write() ;
+            jH.h_rel[i][j]->Write() ;
+            jH.h_hit[i][j]->Write() ;
+
+        }
     }
+
 
 }
