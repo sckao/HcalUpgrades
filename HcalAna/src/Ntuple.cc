@@ -6,27 +6,33 @@ void setBranchAddresses(TTree* chain, Ntuple& treeVars)
   chain -> SetBranchAddress("eventId",     &treeVars.eventId);
   chain -> SetBranchAddress("isSignal",    &treeVars.isSignal);
   
-  // PAT VARIABLES
-  chain -> SetBranchAddress("nMuons",      &treeVars.nMuons     );
+  chain -> SetBranchAddress("nLeptons",    &treeVars.nLeptons     );
   chain -> SetBranchAddress("nJets",       &treeVars.nJets      );
   chain -> SetBranchAddress("nVertices",   &treeVars.nVertices  );
   chain -> SetBranchAddress("nGen",        &treeVars.nGen       );
 
-  chain -> SetBranchAddress("muPx",        treeVars.muPx       );
-  chain -> SetBranchAddress("muPy",        treeVars.muPy       );
-  chain -> SetBranchAddress("muPz",        treeVars.muPz       );
-  chain -> SetBranchAddress("muE",         treeVars.muE        );
-  chain -> SetBranchAddress("muE",         treeVars.muE        );
-  chain -> SetBranchAddress("muIso5",      treeVars.muIso5     );
-  chain -> SetBranchAddress("muIso4",      treeVars.muIso4     );
-  chain -> SetBranchAddress("muIso3",      treeVars.muIso3     );
-  chain -> SetBranchAddress("muIso2",      treeVars.muIso2     );
-  chain -> SetBranchAddress("muIso1",      treeVars.muIso1     );
-  chain -> SetBranchAddress("muIhit5",     treeVars.muIhit5     );
-  chain -> SetBranchAddress("muIhit4",     treeVars.muIhit4     );
-  chain -> SetBranchAddress("muIhit3",     treeVars.muIhit3     );
-  chain -> SetBranchAddress("muIhit2",     treeVars.muIhit2     );
-  chain -> SetBranchAddress("muIhit1",     treeVars.muIhit1     );
+  chain -> SetBranchAddress("vtxX",         treeVars.vtxX      );
+  chain -> SetBranchAddress("vtxY",         treeVars.vtxY      );
+  chain -> SetBranchAddress("vtxZ",         treeVars.vtxZ      );
+  chain -> SetBranchAddress("vtxNdof",      treeVars.vtxNdof   );
+  chain -> SetBranchAddress("vtxChi2",      treeVars.vtxChi2   );
+  //chain -> SetBranchAddress("vtxNTracks",   treeVars.vtxNTracks );
+
+  chain -> SetBranchAddress("lepPx",        treeVars.lepPx       );
+  chain -> SetBranchAddress("lepPy",        treeVars.lepPy       );
+  chain -> SetBranchAddress("lepPz",        treeVars.lepPz       );
+  chain -> SetBranchAddress("lepE",         treeVars.lepE        );
+  chain -> SetBranchAddress("lepE",         treeVars.lepE        );
+  chain -> SetBranchAddress("lepIso5",      treeVars.lepIso5     );
+  chain -> SetBranchAddress("lepIso4",      treeVars.lepIso4     );
+  chain -> SetBranchAddress("lepIso3",      treeVars.lepIso3     );
+  chain -> SetBranchAddress("lepIso2",      treeVars.lepIso2     );
+  chain -> SetBranchAddress("lepIso1",      treeVars.lepIso1     );
+  chain -> SetBranchAddress("lepIhit5",     treeVars.lepIhit5     );
+  chain -> SetBranchAddress("lepIhit4",     treeVars.lepIhit4     );
+  chain -> SetBranchAddress("lepIhit3",     treeVars.lepIhit3     );
+  chain -> SetBranchAddress("lepIhit2",     treeVars.lepIhit2     );
+  chain -> SetBranchAddress("lepIhit1",     treeVars.lepIhit1     );
   
   chain -> SetBranchAddress("jetPx",        treeVars.jetPx     );
   chain -> SetBranchAddress("jetPy",        treeVars.jetPy     );
@@ -41,16 +47,7 @@ void setBranchAddresses(TTree* chain, Ntuple& treeVars)
   chain -> SetBranchAddress("jetNHF",       treeVars.jetNHF    );
   chain -> SetBranchAddress("jetNEF",       treeVars.jetNEF    );
   chain -> SetBranchAddress("jetMEF",        treeVars.jetMEF    );
-  chain -> SetBranchAddress("jetIso5",      treeVars.jetIso5     );
-  chain -> SetBranchAddress("jetIso4",      treeVars.jetIso4     );
-  chain -> SetBranchAddress("jetIso3",      treeVars.jetIso3     );
-  chain -> SetBranchAddress("jetIso2",      treeVars.jetIso2     );
-  chain -> SetBranchAddress("jetIso1",      treeVars.jetIso1     );
-  chain -> SetBranchAddress("jetIhit5",     treeVars.jetIhit5     );
-  chain -> SetBranchAddress("jetIhit4",     treeVars.jetIhit4     );
-  chain -> SetBranchAddress("jetIhit3",     treeVars.jetIhit3     );
-  chain -> SetBranchAddress("jetIhit2",     treeVars.jetIhit2     );
-  chain -> SetBranchAddress("jetIhit1",     treeVars.jetIhit1     );
+
 
   chain -> SetBranchAddress("pdgId",        treeVars.pdgId       );
   chain -> SetBranchAddress("momId",        treeVars.momId       );
@@ -82,25 +79,33 @@ void setBranches(TTree* chain, Ntuple& treeVars)
   chain -> Branch("isSignal",      &treeVars.isSignal,          "isSignal/I");
   
   // RECO VARIABLES
-  chain -> Branch("nMuons",      &treeVars.nMuons,               "nMuons/I");
-  chain -> Branch("nJets",       &treeVars.nJets,                "nJets/I");
-  chain -> Branch("nVertices",   &treeVars.nVertices,            "nVertices/I");
-  chain -> Branch("nGen",        &treeVars.nGen,                 "nGen/I");
+  chain -> Branch("nLeptons",     &treeVars.nLeptons,             "nLeptons/I");
+  chain -> Branch("nJets",        &treeVars.nJets,                "nJets/I");
+  chain -> Branch("nVertices",    &treeVars.nVertices,            "nVertices/I");
+  chain -> Branch("nTotalVtx",    &treeVars.nTotalVtx,            "nTotalVtx/I");
+  chain -> Branch("nGen",         &treeVars.nGen,                 "nGen/I");
 
-  chain -> Branch("muPx",        treeVars.muPx,                 "muPx[nMuons]/F");
-  chain -> Branch("muPy",        treeVars.muPy,                 "muPy[nMuons]/F");
-  chain -> Branch("muPz",        treeVars.muPz,                 "muPz[nMuons]/F");
-  chain -> Branch("muE",         treeVars.muE,                  "muE[nMuons]/F");
-  chain -> Branch("muIso5",      treeVars.muIso5,               "muIso5[nMuons][5]/F");
-  chain -> Branch("muIso4",      treeVars.muIso4,               "muIso4[nMuons][5]/F");
-  chain -> Branch("muIso3",      treeVars.muIso3,               "muIso3[nMuons][5]/F");
-  chain -> Branch("muIso2",      treeVars.muIso2,               "muIso2[nMuons][5]/F");
-  chain -> Branch("muIso1",      treeVars.muIso1,               "muIso1[nMuons][5]/F");
-  chain -> Branch("muIhit5",     treeVars.muIhit5,              "muIhit5[nMuons][5]/I");
-  chain -> Branch("muIhit4",     treeVars.muIhit4,              "muIhit4[nMuons][5]/I");
-  chain -> Branch("muIhit3",     treeVars.muIhit3,              "muIhit3[nMuons][5]/I");
-  chain -> Branch("muIhit2",     treeVars.muIhit2,              "muIhit2[nMuons][5]/I");
-  chain -> Branch("muIhit1",     treeVars.muIhit1,              "muIhit1[nMuons][5]/I");
+  chain -> Branch("vtxX",         treeVars.vtxX,                  "vtxX[nVertices]/F");
+  chain -> Branch("vtxY",         treeVars.vtxY,                  "vtxY[nVertices]/F");
+  chain -> Branch("vtxZ",         treeVars.vtxZ,                  "vtxZ[nVertices]/F");
+  chain -> Branch("vtxNdof",      treeVars.vtxNdof,               "vtxNdof[nVertices]/F");
+  chain -> Branch("vtxChi2",      treeVars.vtxChi2,               "vtxChi2[nVertices]/F");
+  //chain -> Branch("vtxNTracks",   treeVars.vtxNTracks,            "vtxNTracks[nVertices]/F");
+
+  chain -> Branch("lepPx",        treeVars.lepPx,                 "lepPx[nLeptons]/F");
+  chain -> Branch("lepPy",        treeVars.lepPy,                 "lepPy[nLeptons]/F");
+  chain -> Branch("lepPz",        treeVars.lepPz,                 "lepPz[nLeptons]/F");
+  chain -> Branch("lepE",         treeVars.lepE,                  "lepE[nLeptons]/F");
+  chain -> Branch("lepIso5",      treeVars.lepIso5,               "lepIso5[nLeptons][5]/F");
+  chain -> Branch("lepIso4",      treeVars.lepIso4,               "lepIso4[nLeptons][5]/F");
+  chain -> Branch("lepIso3",      treeVars.lepIso3,               "lepIso3[nLeptons][5]/F");
+  chain -> Branch("lepIso2",      treeVars.lepIso2,               "lepIso2[nLeptons][5]/F");
+  chain -> Branch("lepIso1",      treeVars.lepIso1,               "lepIso1[nLeptons][5]/F");
+  chain -> Branch("lepIhit5",     treeVars.lepIhit5,              "lepIhit5[nLeptons][5]/I");
+  chain -> Branch("lepIhit4",     treeVars.lepIhit4,              "lepIhit4[nLeptons][5]/I");
+  chain -> Branch("lepIhit3",     treeVars.lepIhit3,              "lepIhit3[nLeptons][5]/I");
+  chain -> Branch("lepIhit2",     treeVars.lepIhit2,              "lepIhit2[nLeptons][5]/I");
+  chain -> Branch("lepIhit1",     treeVars.lepIhit1,              "lepIhit1[nLeptons][5]/I");
   
   chain -> Branch("jetPx",        treeVars.jetPx,                 "jetPx[nJets]/F");
   chain -> Branch("jetPy",        treeVars.jetPy,                 "jetPy[nJets]/F");
@@ -115,16 +120,6 @@ void setBranches(TTree* chain, Ntuple& treeVars)
   chain -> Branch("jetNEF",       treeVars.jetNEF,                "jetNEF[nJets]/F" );
   chain -> Branch("jetNHF",       treeVars.jetNHF,                "jetNHF[nJets]/F" );
   chain -> Branch("jetMEF",       treeVars.jetMEF,                "jetMEF[nJets]/F" );
-  chain -> Branch("jetIso5",      treeVars.jetIso5,               "jetIso5[nJets][5]/F");
-  chain -> Branch("jetIso4",      treeVars.jetIso4,               "jetIso4[nJets][5]/F");
-  chain -> Branch("jetIso3",      treeVars.jetIso3,               "jetIso3[nJets][5]/F");
-  chain -> Branch("jetIso2",      treeVars.jetIso2,               "jetIso2[nJets][5]/F");
-  chain -> Branch("jetIso1",      treeVars.jetIso1,               "jetIso1[nJets][5]/F");
-  chain -> Branch("jetIhit5",     treeVars.jetIhit5,              "jetIhit5[nJets][5]/I");
-  chain -> Branch("jetIhit4",     treeVars.jetIhit4,              "jetIhit4[nJets][5]/I");
-  chain -> Branch("jetIhit3",     treeVars.jetIhit3,              "jetIhit3[nJets][5]/I");
-  chain -> Branch("jetIhit2",     treeVars.jetIhit2,              "jetIhit2[nJets][5]/I");
-  chain -> Branch("jetIhit1",     treeVars.jetIhit1,              "jetIhit1[nJets][5]/I");
 
   chain -> Branch("pdgId",        treeVars.pdgId,                 "pdgId[nGen]/I");
   chain -> Branch("momId",        treeVars.momId,                 "momId[nGen]/I");
@@ -156,9 +151,19 @@ void initializeBranches(TTree* chain, Ntuple& treeVars)
   treeVars.isSignal    = 0; 
   
   treeVars.nJets      = 0 ; 
-  treeVars.nMuons     = 0 ; 
+  treeVars.nLeptons   = 0 ; 
   treeVars.nGen       = 0 ; 
   treeVars.nVertices  = 0 ; 
+  treeVars.nTotalVtx  = 0 ; 
+
+  for ( int i=0; i< MAXVTX; i++) {
+      treeVars.vtxX[i] = 0 ;
+      treeVars.vtxY[i] = 0 ;
+      treeVars.vtxZ[i] = 0 ;
+      treeVars.vtxNdof[i] = 0 ;
+      treeVars.vtxChi2[i] = 0 ;
+      //treeVars.vtxNTracks[i] = 0 ;
+  }
 
   for ( int i=0; i< MAXJET; i++) {
       treeVars.jetPx[i] = 0 ;
@@ -174,36 +179,24 @@ void initializeBranches(TTree* chain, Ntuple& treeVars)
       treeVars.jetNEF[i] = 0 ;
       treeVars.jetNHF[i] = 0 ;
       treeVars.jetMEF[i] = 0 ;
-      for ( int j=0; j< 5; j++ ) {
-          treeVars.jetIso5[i][j] = 0 ;
-          treeVars.jetIso4[i][j] = 0 ;
-          treeVars.jetIso3[i][j] = 0 ;
-          treeVars.jetIso2[i][j] = 0 ;
-          treeVars.jetIso1[i][j] = 0 ;
-          treeVars.jetIhit5[i][j] = 0 ;
-          treeVars.jetIhit4[i][j] = 0 ;
-          treeVars.jetIhit3[i][j] = 0 ;
-          treeVars.jetIhit2[i][j] = 0 ;
-          treeVars.jetIhit1[i][j] = 0 ;
-      }	   
 
   }
-  for ( int i=0; i< MAXMU; i++) {
-      treeVars.muPx[i] = 0 ;
-      treeVars.muPy[i] = 0 ;
-      treeVars.muPz[i] = 0 ;
-      treeVars.muE[i] = 0 ;
+  for ( int i=0; i< MAXLEP; i++) {
+      treeVars.lepPx[i] = 0 ;
+      treeVars.lepPy[i] = 0 ;
+      treeVars.lepPz[i] = 0 ;
+      treeVars.lepE[i] = 0 ;
       for ( int j=0; j< 5; j++ ) {
-          treeVars.muIso5[i][j] = 0 ;
-          treeVars.muIso4[i][j] = 0 ;
-          treeVars.muIso3[i][j] = 0 ;
-          treeVars.muIso2[i][j] = 0 ;
-          treeVars.muIso1[i][j] = 0 ;
-          treeVars.muIhit5[i][j] = 0 ;
-          treeVars.muIhit4[i][j] = 0 ;
-          treeVars.muIhit3[i][j] = 0 ;
-          treeVars.muIhit2[i][j] = 0 ;
-          treeVars.muIhit1[i][j] = 0 ;
+          treeVars.lepIso5[i][j] = 0 ;
+          treeVars.lepIso4[i][j] = 0 ;
+          treeVars.lepIso3[i][j] = 0 ;
+          treeVars.lepIso2[i][j] = 0 ;
+          treeVars.lepIso1[i][j] = 0 ;
+          treeVars.lepIhit5[i][j] = 0 ;
+          treeVars.lepIhit4[i][j] = 0 ;
+          treeVars.lepIhit3[i][j] = 0 ;
+          treeVars.lepIhit2[i][j] = 0 ;
+          treeVars.lepIhit1[i][j] = 0 ;
       }	   
   } 
   for ( int i=0; i< MAXGEN; i++) {

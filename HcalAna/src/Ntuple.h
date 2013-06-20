@@ -4,8 +4,9 @@
 #include "TChain.h" 
 
 #define MAXJET 20
-#define MAXMU  10
+#define MAXLEP 10
 #define MAXGEN 20
+#define MAXVTX 10
 
 struct Ntuple
 {
@@ -15,7 +16,14 @@ struct Ntuple
   int isSignal ;
 
   // reco variables
+  int   nTotalVtx ;
   int   nVertices ;
+  float vtxX[MAXVTX] ;
+  float vtxY[MAXVTX] ;
+  float vtxZ[MAXVTX] ;
+  float vtxNdof[MAXVTX] ;
+  float vtxChi2[MAXVTX] ;
+  //float vtxNTracks[MAXVTX] ;
 
   int   nJets ;
   float jetPx[MAXJET];
@@ -31,33 +39,23 @@ struct Ntuple
   float jetNEF[MAXJET];
   float jetNHF[MAXJET];
   float jetMEF[MAXJET];
-  float jetIso5[MAXJET][5];
-  float jetIso4[MAXJET][5];
-  float jetIso3[MAXJET][5];
-  float jetIso2[MAXJET][5];
-  float jetIso1[MAXJET][5];
-  int   jetIhit5[MAXJET][5];
-  int   jetIhit4[MAXJET][5];
-  int   jetIhit3[MAXJET][5];
-  int   jetIhit2[MAXJET][5];
-  int   jetIhit1[MAXJET][5];
 
   
-  int   nMuons ;
-  float muPx[MAXMU];
-  float muPy[MAXMU];
-  float muPz[MAXMU];
-  float muE[MAXMU];
-  float muIso5[MAXMU][5];
-  float muIso4[MAXMU][5];
-  float muIso3[MAXMU][5];
-  float muIso2[MAXMU][5];
-  float muIso1[MAXMU][5];
-  int   muIhit5[MAXMU][5];
-  int   muIhit4[MAXMU][5];
-  int   muIhit3[MAXMU][5];
-  int   muIhit2[MAXMU][5];
-  int   muIhit1[MAXMU][5];
+  int   nLeptons ;
+  float lepPx[MAXLEP];
+  float lepPy[MAXLEP];
+  float lepPz[MAXLEP];
+  float lepE[MAXLEP];
+  float lepIso5[MAXLEP][5];
+  float lepIso4[MAXLEP][5];
+  float lepIso3[MAXLEP][5];
+  float lepIso2[MAXLEP][5];
+  float lepIso1[MAXLEP][5];
+  int   lepIhit5[MAXLEP][5];
+  int   lepIhit4[MAXLEP][5];
+  int   lepIhit3[MAXLEP][5];
+  int   lepIhit2[MAXLEP][5];
+  int   lepIhit1[MAXLEP][5];
 
   // Gen Particle information
   int nGen ; 
