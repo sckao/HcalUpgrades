@@ -122,7 +122,7 @@ void uHTRCtrlMezzInterface::Test( sub_handle& hd_ ) {
            rbuff[0]&0xFF,rbuff[1]&0xFF,rbuff[2]&0xFF,rbuff[3]&0xFF,rbuff[4]&0xFF,rbuff[5]&0xFF ) ;
    //tag_MezzId( hd_, 4 ) ;
    
-   //vector<char> rV= i2c_read_MAC_EEPROM( hd_, 0x0, 128 ) ; 
+   vector<char> rV= i2c_read_MAC_EEPROM( hd_, 0x0, 128 ) ; 
    //printf(" sz  of read : %d \n", rV.size() ) ;
 
    // switch to channel 0 - MMC 
@@ -252,6 +252,72 @@ bool uHTRCtrlMezzInterface::i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_c
    return valid ;
 }
 
+// Only work for JTAG(1), FLASH(4) 
+void uHTRCtrlMezzInterface::i2c_read_MezzId( sub_handle& hd_ , int i2c_ch ) {
+
+   if ( hd_ == 0 ) {
+      printf(" Sub20 is not initialized, Please initialize sub20 first !!! " ) ;
+      return ;
+   }
+
+
+   // switch to different channel
+   char wbuff[8] ;
+   char rbuff[8] ;
+
+   wbuff[0] = (char)(1 << i2c_ch);
+   printf(" =========================== \n");
+   printf(" Set to channel %d \n", i2c_ch ) ;
+   
+   int w_ = sub_i2c_write( hd_, I2C_ADDR_BASE_MUX, 0, 0, wbuff, 1);
+   if ( w_ != 0 )  printf(" switch to channel %d failed !! \n", i2c_ch ) ;
+
+   // read MAC address 
+   i2c_read_MAC( hd_, rbuff, i2c_ch ) ; 
+   //printf("   -->  [%x][%x][%x][%x][%x][%x] \n", 
+   //        rbuff[0]&0xFF,rbuff[1]&0xFF,rbuff[2]&0xFF,rbuff[3]&0xFF,rbuff[4]&0xFF,rbuff[5]&0xFF ) ;
+   
+   // read the MezzId
+   vector<char> rV= i2c_read_MAC_EEPROM( hd_, 0x0, 128 ) ; 
+
+   //byte length :   1,1,1,16, 2,11,16,16, 8, 56
+   int bt_len[]  = { 1,1,1,16, 2,11,16,16, 8, 56 } ;  // length of the byte stream
+   int pos_id[]  = { 0,1,2, 3,19,21,32,48,64, 72 } ;  // starting position of the byte stream
+   //int id_type[] = { 0,0,0, 1, 0, 1, 1, 1, 1,  1 } ;  // 0: integer 1: character
+
+   int format_version = (int)rV[0] ; 
+   int type_code      = (int)rV[1] ;
+   int subtype_code   = (int)rV[2] ;
+   int sn             =  (int)( (rV[20] << 8) | rV[19] ) ;
+   printf(" formate :%d , type: %d, subtype: %d, SN: %d \n", format_version, type_code, subtype_code, sn ) ;
+
+   char typeStr[16] ;
+   for ( int i=3; i <19; i++ )  typeStr[ i-3 ] = rV[i]  ;
+   printf( " mezz type: %s \n", typeStr ) ;
+
+   char dateStr[11] ;         
+   for ( int i=21; i<32; i++ )  dateStr[i-21] = rV[i]  ;
+   printf( " date : %s \n", dateStr ) ;
+
+   char siteStr[16] ;         
+   for ( int i=32; i<48; i++ )  siteStr[i-32] = rV[i]  ;
+   printf( " Site -> %s \n", siteStr ) ;
+
+   char nameStr[16] ;         
+   for ( int i=48; i<64; i++ )  nameStr[i-48] = rV[i]  ;
+   printf( " Name -> %s \n", nameStr ) ;
+
+   char relStr[8] ;         
+   for ( int i=64; i<72; i++ )  relStr[i-64] = rV[i]  ;
+   printf( " Release : %s \n", relStr ) ;
+
+   char noteStr[56] ;         
+   for ( int i=72; i<128; i++ )  noteStr[i-72] = rV[i]  ;
+   printf( " Note : %s \n", noteStr ) ;
+
+ 
+}
+
 // Read the content from the MAC EEPROM (24AA02E48/24AA025E48 series )
 vector<char> uHTRCtrlMezzInterface::i2c_read_MAC_EEPROM( sub_handle& hd_, uint16_t maddr, int nRead ) {
 
@@ -269,12 +335,11 @@ vector<char> uHTRCtrlMezzInterface::i2c_read_MAC_EEPROM( sub_handle& hd_, uint16
           output.push_back( rbuff[i] ) ;
           //if ( i < 8 ) printf(" [%2x]",  rbuff[i]&0xFF ) ;
           //else
-          printf(" [%c]",  rbuff[i] ) ;
-
+          //printf(" [%c]",  rbuff[i] ) ;
           //if ( i%8 == 7 ) printf("\n") ;
       }
    }
-   printf("\n") ;
+   //printf("\n") ;
    return output ;    
 }
 
@@ -447,7 +512,7 @@ void uHTRCtrlMezzInterface::spi_switch( sub_handle& hd_, int channel, int revisi
    //char wbuff[8] ;
    //char rbuff[8] ;
 
-   printf(" select revision : %d \n", revision ) ;
+   //printf(" select revision : %d \n", revision ) ;
    // 1st step, set up revision 
    uint8_t val = channel ;
    if ( channel == 2 ) {
@@ -464,12 +529,12 @@ void uHTRCtrlMezzInterface::spi_switch( sub_handle& hd_, int channel, int revisi
       write_GPIO( hd_, val, true ) ;
    }
 
+   /*
    printf("\n ==================================================== \n") ;
    printf(" ==== SPI Targets 0: BCK_CS0,   1: BCK_CS1, 2: BCK_CS \n") ;
    printf(" ====             3: FNT_CS0,   4: FNT_CS1, 5: FNT_CS \n") ;
    printf(" ====             8: CS_EEPROM, 9: CS_MAC, 10: CS_CPLD \n") ;
    printf(" ==== SPI Selection : %X ====\n", val ) ;
-   /*
    wbuff[0] = 0x1 ;  // command byte to write
    wbuff[1] = targetId ; // FNT_CS
    w_ = sub_i2c_write( hd_, I2C_ADDR_GPIO, 0, 0, wbuff, 2);
@@ -523,6 +588,54 @@ void uHTRCtrlMezzInterface::check_EEPROM( sub_handle& hd_ ){
    if ( rc ==0 ) { 
           printf(" EEPROM Register:        [%X] \n", rbuff[0] ) ;
    }
+}
+
+void uHTRCtrlMezzInterface::spi_read_MezzId( sub_handle& hd_ ) {
+
+   // Read MAC address 
+   char macA[6] ;
+   spi_read_MAC(hd_, macA ) ;
+   // spi channel 9 is the MAC EEPROM for clock mezzanine
+   int spi_ch = 9 ;
+   spi_switch( hd_, spi_ch ) ;
+   check_EEPROM( hd_ ) ;
+   vector<char> rV = spi_read_EEPROM( hd_, spi_ch ) ;
+
+   //  byte length :   1,1,1,16, 2,11,16,16, 8, 56
+   //int pos_id[]  = { 0,1,2, 3,19,21,32,48,64, 72 } ;  // starting position of the byte stream
+   //int id_type[] = { 0,0,0, 1, 0, 1, 1, 1, 1,  1 } ;  // 0: integer 1: character
+   
+   int format_version = (int)rV[0] ;
+   int type_code      = (int)rV[1] ;
+   int subtype_code   = (int)rV[2] ;
+   int sn             =  (int)( (rV[20] << 8) | rV[19] ) ;
+   printf(" formate :%d , type: %d, subtype: %d, SN: %d \n", format_version, type_code, subtype_code, sn ) ;
+   
+   char typeStr[16] ;
+   for ( int i=3; i <19; i++ )  typeStr[ i-3 ] = rV[i]  ;
+   printf( " mezz type: %s \n", typeStr ) ;
+   
+   char dateStr[11] ;
+   for ( int i=21; i<32; i++ )  dateStr[i-21] = rV[i]  ;
+   printf( " date : %s \n", dateStr ) ;
+   
+   char siteStr[16] ;
+   for ( int i=32; i<48; i++ )  siteStr[i-32] = rV[i]  ;
+   printf( " Site -> %s \n", siteStr ) ;
+   
+   char nameStr[16] ;
+   for ( int i=48; i<64; i++ )  nameStr[i-48] = rV[i]  ;
+   printf( " Name -> %s \n", nameStr ) ;
+   
+   char relStr[8] ;
+   for ( int i=64; i<72; i++ )  relStr[i-64] = rV[i]  ;
+   printf( " Release : %s \n", relStr ) ;
+
+   char noteStr[56] ;
+   for ( int i=72; i<128; i++ )  noteStr[i-72] = rV[i]  ;
+   printf( " Note : %s \n", noteStr ) ;
+
+
 }
 
 // 128K bit EEPROM ,256 pages,   
@@ -806,7 +919,7 @@ void uHTRCtrlMezzInterface::spi_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct&
          input[0] = 0x2 ;              // write command 
 	 input[1] = (j-6) & 0xFF ;     // write address
          //printf(" Programming page %d , %X %X  \n", (j-6)/writeSize , input[1] , input[2]  ) ;
-         for ( size_t k = 0 ; k < 16 ; k++ ) {
+         for ( size_t k = 0 ; k < writeSize  ; k++ ) {
              input[2 + k] = data_buff[k+j] ;
              //printf("([%x]: %c , %c) ", k+j, data_buff[k+j], input[2 + k+j] )  ;
          }
@@ -817,7 +930,7 @@ void uHTRCtrlMezzInterface::spi_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct&
          rc = sub_spi_transfer( hd_, input, 0, writeSize+2 , SS_CONF(0,SS_LO) ) ;
          if ( rc !=0 ) printf(" MAC EEPROM Page Write Fail (%d) \n", rc ) ;
 
-         // (period of clk = 4 micro-sec) * (8bits/byte) * (size of write data + address + command + 10) 
+         // (period of clk = 4 micro-sec) * (8bits/byte) * (size of write data + address + command + 100) 
          int tt = (1000/spi_clk)*8*(writeSize+1+1+100) ; 
          usleep( tt ) ;
          //check_EEPROM( hd_ ) ;
@@ -1315,6 +1428,22 @@ unsigned char uHTRCtrlMezzInterface::Char2Hex(unsigned char c) {
 
 
 // mezz_type_code  3: Flash , 4: JTag , 5: CPLD 
+void uHTRCtrlMezzInterface::check_MezzId( sub_handle& hd_ ){
+
+  printf(" ==============================\n") ;
+  printf(" | Mezzanine ID code          |\n") ;
+  printf(" | 3: Flash, 4: JTag, 5 CPLD  |\n") ;
+  printf(" ==============================\n") ;
+  
+  int mezz_type = tool_readline_int("(3)Flash, (4)JTag, (5)CPLD ? " ) ;
+
+  if ( mezz_type == 3 )  i2c_read_MezzId( hd_ , 4 ) ;
+  if ( mezz_type == 4 )  i2c_read_MezzId( hd_ , 1 ) ;
+  if ( mezz_type == 5 )  spi_read_MezzId( hd_ ) ;
+
+}
+
+// mezz_type_code  3: Flash , 4: JTag , 5: CPLD 
 bool uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
 
   printf(" ==============================\n") ;
@@ -1476,8 +1605,8 @@ int uHTRCtrlMezzInterface::log_SN( sub_handle& hd_, int mezz_type ) {
      if ( snfile == NULL )  printf(" file opened error ! \n") ;
 
      fprintf( snfile, "%s %d %d\n", hmac, next_sn[mezz_type-3], mezz_type );
-     next_sn[mezz_type-3] +=1 ;
      sn = next_sn[mezz_type-3] ;
+     next_sn[mezz_type-3] +=1 ;
      fclose( snfile );
   } else {
 

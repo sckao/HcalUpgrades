@@ -57,6 +57,7 @@ public:
   bool i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_ch ) ;
   void i2c_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct& id, int i2c_ch ) ;
   std::vector<char> i2c_read_MAC_EEPROM( sub_handle& hd_, uint16_t addr, int nRead = 1 ) ;
+  void i2c_read_MezzId( sub_handle& hd_, int i2c_ch ) ;
   // GPIO functions
   void write_GPIO( sub_handle& hd_, uint8_t val, bool isFront )  ;
   void status_GPIO( sub_handle& hd_, bool isFront )  ;
@@ -78,6 +79,7 @@ public:
   bool spi_read_MAC( sub_handle& hd_, char* macA  ) ;
   void spi_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct& id ) ;
   std::vector<char> spi_read_EEPROM( sub_handle& hd_, int spi_ch, bool toFile = false ) ;
+  void spi_read_MezzId( sub_handle& hd_ ) ;
 
   // For Flash Mezzanine
   void checkFlashID( sub_handle& hd_ ) ;
@@ -88,6 +90,7 @@ public:
   void readMCSFile( std::vector<unsigned char>& source , std::string mcsFileName = "" ) ;
   void printMCSFile() ;
 
+  void check_MezzId( sub_handle& hd_ ) ;
   bool tag_MezzId( sub_handle& hd_, int mezz_type ) ;
   bool load_SN( ) ;
   int log_SN( sub_handle& hd_, int mezz_type ) ;

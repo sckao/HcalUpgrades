@@ -16,6 +16,7 @@
 using namespace std ;
 
 int spi_channel = 2 ;
+int mezz_type = 3 ;
 
 void help() ;
 bool InitializeSub20( sub_device& dev_ , sub_handle& hd_ ) ;
@@ -26,20 +27,23 @@ void help()
     printf("Mode Flags - These can be used in conjunction but will always evaluate in the order listed below.\n");
     printf(" --flash,           -f   Flash test\n");
     printf(" --clkset,          -k   Write CPLD EEPROM\n");
-    printf(" --jtag,            -j   Tag JTAG Mezzanine\n");
+    printf(" --jtag,            -j   Test JTAG Mezzanine\n");
     printf(" --mmc,             -m   Test MMC\n");
     printf(" --readflash,       -r   Read Flash\n");
     printf(" --writeflash,      -w   Write Flash\n");
     printf(" --cpld,            -c   Test CPLD\n");
+    printf(" --tag,             -g   Tag A Mezzanine\n");
     printf(" --initial,         -i   Initialize sub20\n");
     printf(" --scan,            -s   Scan i2c slaves\n");
     printf(" --printMCS,        -p   Print MCS file\n");
     printf(" --test,            -t   Test \n");
     printf(" --help,            -h   Showing this help menu\n");
     printf(" ==================================================== \n") ;
-    printf(" == SPI Targets 0: BCK_CS0,   1: BCK_CS1, 2: BCK_CS  \n") ;
-    printf(" ==             3: FNT_CS0,   4: FNT_CS1, 5: FNT_CS  \n") ;
-    printf(" ==             8: CS_EEPROM, 9: CS_MAC, 10: CS_CPLD \n") ;
+    printf(" *   Mezzanine Type 3: Flash  4: JTag, 5: CPLD      * \n") ;
+    printf(" ==================================================== \n") ;
+    printf(" =  SPI Targets 0: BCK_CS0,   1: BCK_CS1, 2: BCK_CS  \n") ;
+    printf(" =              3: FNT_CS0,   4: FNT_CS1, 5: FNT_CS  \n") ;
+    printf(" =              8: CS_EEPROM, 9: CS_MAC, 10: CS_CPLD \n") ;
     printf(" ==================================================== \n") ;
 
 }
@@ -61,6 +65,7 @@ int main(int argc, char* argv[])
         {"cpld",          required_argument, 0, 'c'},
         {"readflash",     required_argument, 0, 'r'},
         {"writeflash",    required_argument, 0, 'w'},
+        {"tag",           required_argument, 0, 'g'},
         {"printMCS",            no_argument, 0, 'p'},
         {"help",                no_argument, 0, 'h'}
     };
@@ -79,7 +84,7 @@ int main(int argc, char* argv[])
     ctrl->set_spi_clock( 1000 ) ;
     bool validMac = true ;
 
-    while((opt = getopt_long(argc, argv, "ftipkjmsh:c:w:r:", long_options, &option_index)) != -1)
+    while((opt = getopt_long(argc, argv, "ftipkjmsh:c:w:r:g:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
@@ -89,10 +94,14 @@ int main(int argc, char* argv[])
                 break;
             case 't':
                 //spi_channel = int(atoi(optarg));
-                //freq_ = ctrl->tool_readline_int(" Set I2C Frequence (489Hz ~ 444444 Hz) : " ) ;
                 //ctrl->set_sub20_frequence( hdl, freq_ ) ;
-                ctrl->Test( hdl ) ;          
+                //ctrl->Test( hdl ) ;          
+                ctrl->check_MezzId( hdl ) ;       
                 //ctrl->log_SN( hdl, 4 ) ;          
+                break;
+            case 'g':
+                mezz_type = int(atoi(optarg));
+                ctrl->tag_MezzId( hdl, mezz_type ) ;
                 break;
             case 'c':
                 spi_channel = int(atoi(optarg));
