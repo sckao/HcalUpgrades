@@ -27,6 +27,12 @@ string tool_readline() ;
 //        MAC       ,           < MezzType       SN >
 std::map<std::string, std::pair<unsigned int, unsigned int> > snMap;
 
+uHTRCtrlMezzInterface::uHTRCtrlMezzInterface() {
+
+   doLog = false ;
+   spi_clk = 250 ;
+}
+
 string uHTRCtrlMezzInterface::tool_readline( string prompt ) {
 
     string retval;
@@ -63,6 +69,7 @@ void uHTRCtrlMezzInterface::set_sub20_frequence( sub_handle& hd_, int freq ) {
    else           printf(" freq set fail ! \n") ;
 
 }
+
 
 // In order to find the i2c slave , which is the top level mux(PCA9548A) 
 void uHTRCtrlMezzInterface::scan_i2c_slaves( sub_handle& hd_ ) {
@@ -107,12 +114,12 @@ void uHTRCtrlMezzInterface::Test( sub_handle& hd_ ) {
    if ( w_ != 0 )  printf(" switch to channel %d failed !! \n", i2c_ch ) ;
    scan_i2c_slaves( hd_ ) ;
 
-   read_ADC( hd_, i2c_ch ) ;
+   //read_ADC( hd_, i2c_ch ) ;
 
    
-   //i2c_read_MAC( hd_, rbuff, i2c_ch ) ; 
-   //printf("   -->  [%x][%x][%x][%x][%x][%x] \n", 
-   //        rbuff[0]&0xFF,rbuff[1]&0xFF,rbuff[2]&0xFF,rbuff[3]&0xFF,rbuff[4]&0xFF,rbuff[5]&0xFF ) ;
+   i2c_read_MAC( hd_, rbuff, i2c_ch ) ; 
+   printf("   -->  [%x][%x][%x][%x][%x][%x] \n", 
+           rbuff[0]&0xFF,rbuff[1]&0xFF,rbuff[2]&0xFF,rbuff[3]&0xFF,rbuff[4]&0xFF,rbuff[5]&0xFF ) ;
    //tag_MezzId( hd_, 4 ) ;
    
    //vector<char> rV= i2c_read_MAC_EEPROM( hd_, 0x0, 128 ) ; 
@@ -128,6 +135,24 @@ void uHTRCtrlMezzInterface::Test( sub_handle& hd_ ) {
 
    scan_i2c_slaves( hd_ ) ;
    */
+
+}
+
+void uHTRCtrlMezzInterface::Test2( sub_handle& hd_ ){
+
+  if ( hd_ == 0 ) {
+     printf(" Sub20 is not initialized, Please initialize sub20 first !!! " ) ;
+     return ;
+  }
+
+  char macA[6] ;
+  bool validMAC = spi_read_MAC( hd_, macA ) ;
+  if ( !validMAC ) { 
+     printf(" Invalid MAC Address \n") ;
+  }
+
+  char hmac[20];
+  sprintf(hmac, "%02x:%02x:%02x:%02x:%02x:%02x", 0xff&macA[0], 0xff&macA[1], 0xff&macA[2], 0xff&macA[3], 0xff&macA[4], 0xff&macA[5]);
 
 }
 
@@ -160,8 +185,14 @@ void uHTRCtrlMezzInterface::read_ADC( sub_handle& hd_, int i2c_ch ) {
            double Is = (double)retval*2.5*1 ;
            //printf(" read adc : [%x][%x][%x] = %u -> %.2f mA \n",  rbuff[0], rbuff[1], rbuff[2],retval, Is  )  ;
            printf(" read current  : %.2f mA \n", Is  )  ;
+           if ( doLog && k%3 == 1 ) {
+              char theI[8] ;
+              sprintf( theI, "%03.3f", Is ) ;
+              theLog.result.push_back( string(theI) ) ;
+           }
         } else {
            printf(" No vailid ADC yet !\n") ;
+           if ( doLog && k%3 == 1 ) theLog.result.push_back( "N/A" ) ;
         }
      }
      sleep(1) ;  
@@ -188,7 +219,7 @@ void uHTRCtrlMezzInterface::reset_ADC( sub_handle& hd_, int i2c_ch ) {
 }  
 
 // Read the MAC address from the EEPROM (24AA02E48/24AA025E48 series )
-void uHTRCtrlMezzInterface::i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_ch ) {
+bool uHTRCtrlMezzInterface::i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_ch ) {
 
    char wbuff[8] ;
    char rbuff[8] ;
@@ -204,11 +235,21 @@ void uHTRCtrlMezzInterface::i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_c
    w_ = sub_i2c_read( hd_, I2C_MAC_EEPROM, 0, 0, rbuff, 6);
    if ( w_ != 0 )  printf(" Can not read MAC eeprom \n");
 
-   //printf("  [%x][%x][%x][%x][%x][%x] \n", 
-   //        rbuff[0]&0xFF,rbuff[1]&0xFF,rbuff[2]&0xFF,rbuff[3]&0xFF,rbuff[4]&0xFF,rbuff[5]&0xFF ) ;
-   
-   for (int i=0; i< 6; i++) macA[i] = rbuff[i] ;
-   
+
+   bool valid = true ;
+   int ntry = 0 ;
+   do {
+      int nff = 0; 
+      for (int i=0; i< 6; i++) {
+           macA[i] = rbuff[i] ;
+           if ( int(macA[i]&0xff) == 0xff ) nff++ ;
+      }
+      printf(" MAC:  [%x][%x][%x][%x][%x][%x] \n", 
+            rbuff[0]&0xFF,rbuff[1]&0xFF,rbuff[2]&0xFF,rbuff[3]&0xFF,rbuff[4]&0xFF,rbuff[5]&0xFF ) ;
+      if ( nff > 2 ) valid = false ; 
+      if ( ntry > 3 ) break ;
+   } while ( !valid ) ;
+   return valid ;
 }
 
 // Read the content from the MAC EEPROM (24AA02E48/24AA025E48 series )
@@ -219,7 +260,6 @@ vector<char> uHTRCtrlMezzInterface::i2c_read_MAC_EEPROM( sub_handle& hd_, uint16
    wbuff[0] = maddr ;
    vector<char> output ;
    int w_ = sub_i2c_write( hd_, I2C_MAC_EEPROM, 0, 0, wbuff, 1);
-   if ( w_ != 0 )  printf(" Can not reach MAC eeprom \n");
    w_ = sub_i2c_read( hd_, I2C_MAC_EEPROM, 0, 0, rbuff, nRead);
    //usleep( 1000*(nRead+3) ) ;
    if ( w_ != 0 ) {
@@ -280,8 +320,8 @@ void uHTRCtrlMezzInterface::spi_test( sub_handle& hd_ ) {
    int spi_cfg = 0 ;
 
    /* Configure SPI */
-   printf(" SPI_CFG = %d \n", SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_250KHZ ) ;
-   int rc = sub_spi_config( hd_, SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_250KHZ, 0 ) ;
+   printf(" SPI_CFG = %d \n", SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_500KHZ ) ;
+   int rc = sub_spi_config( hd_, SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_500KHZ, 0 ) ;
    sub_spi_config( hd_, 0, &spi_cfg );
    //int rc = sub_spi_config( hd_,  64, &spi_cfg ) ;
    if ( rc ==0 ) printf(" SPI configured (%d) \n", spi_cfg ) ;
@@ -449,10 +489,19 @@ void uHTRCtrlMezzInterface::spi_config( sub_handle& hd_ ) {
    /* Read current SPI configuration */
    printf(" ========================== \n") ;
    int spi_cfg = 0 ;
-
+   int rc = 0 ;
    /* Configure SPI */
-   printf(" SPI_CFG = %d \n", SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_250KHZ ) ;
-   int rc = sub_spi_config( hd_, SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_250KHZ, 0 ) ;
+   if ( spi_clk == 500 ) {
+      printf(" SPI_CFG = %d \n", SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_500KHZ ) ;
+      rc = sub_spi_config( hd_, SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_500KHZ, 0 ) ;
+   } 
+   else if ( spi_clk == 1000 ) {
+      printf(" SPI_CFG = %d \n", SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_1MHZ ) ;
+      rc = sub_spi_config( hd_, SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_1MHZ, 0 ) ;
+   } else {
+      printf(" SPI_CFG = %d \n", SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_250KHZ ) ;
+      rc = sub_spi_config( hd_, SPI_ENABLE|SPI_CPOL_RISE|SPI_SMPL_SETUP|SPI_MSB_FIRST|SPI_CLK_250KHZ, 0 ) ;
+   }
    sub_spi_config( hd_, 0, &spi_cfg );
    if ( rc ==0 ) printf(" SPI configured (%d) \n", spi_cfg ) ;
 
@@ -530,21 +579,40 @@ vector<char> uHTRCtrlMezzInterface::spi_read_EEPROM( sub_handle& hd_, int spi_ch
      return output ;
 }
 
-void uHTRCtrlMezzInterface::spi_read_MAC( sub_handle& hd_, char* macA ) {
+bool uHTRCtrlMezzInterface::spi_read_MAC( sub_handle& hd_, char* macA ) {
 
      // switch to the SPI MAC EEPROM
      spi_switch( hd_ ,  9 ) ;
-
+     usleep(1000) ;
      vector<char> output ;
-     output.clear() ;
 
      vector<char> instruct(2) ;
      instruct[0] = 0x3 ;
      instruct[1] = 0xFA ;
-     spi_read( hd_ , instruct, output, 6 ) ;
 
-     for( int i=0; i<6 ; i++)   macA[i] = output[i] ;
-     
+     bool valid = true ;
+
+     int ntry = 0; 
+     do {
+        output.clear() ;
+        spi_read( hd_ , instruct, output, 6 ) ;
+        usleep(1000) ;
+
+        printf(" MAC:  [%x][%x][%x][%x][%x][%x] \n", 
+            output[0]&0xFF,output[1]&0xFF,output[2]&0xFF,output[3]&0xFF,output[4]&0xFF,output[5]&0xFF ) ;
+        int nff = 0 ;
+        for ( int i=0; i<6 ; i++) {
+            macA[i] = output[i] ;
+            if ( int(macA[i]&0xff) == 0xff ) nff++ ;
+        }
+        if ( nff > 2 ) valid = false ; 
+        if ( !valid ) printf( " Bad MAC address reading !!! " ) ;
+        ntry++ ; 
+        if ( ntry > 3 ) break ;
+     } while ( !valid ) ;
+
+     return valid ;    
+
 }
 
 const uint8_t clock_image_240[] = { 45,
@@ -605,7 +673,7 @@ void uHTRCtrlMezzInterface::erase_CLK_EEPROM( sub_handle& hd_, bool allZero ) {
 
          //check_EEPROM( hd_ ) ;
          // (period of clk = 4 micro-sec) * (8bits/byte) * (size of write data + address + command + 100) 
-         int tt = 4*8*(writeSize+2+1+100) ; 
+         int tt = (1000/spi_clk)*8*(writeSize+2+1+100) ; 
          usleep( tt ) ;
      }
 
@@ -657,6 +725,7 @@ void uHTRCtrlMezzInterface::write_CLK_EEPROM( sub_handle& hd_, int imageChoice1 
 
      // Write data - maximum 64 bytes
      printf(" Programming Clock Mezzanine %d %d  \n", imageChoice1 , imageChoice2   ) ;
+     bool complete = true ;
      for ( int j = 0; j < 0x3FFF; j+=writeSize ) {
          
          // Write enable latch
@@ -695,12 +764,22 @@ void uHTRCtrlMezzInterface::write_CLK_EEPROM( sub_handle& hd_, int imageChoice1 
           
          if ( !emptyPage ) 
             rc = sub_spi_transfer( hd_, input, 0, writeSize+3 , SS_CONF(0,SS_LO) ) ;
-         if ( rc !=0 ) printf(" CPLD EEPROM Page Write Fail (%d) \n", rc ) ;
-
+         if ( rc !=0 ) {
+            printf(" CPLD EEPROM Page Write Fail (%d) \n", rc ) ;
+            complete = false ;
+         }
          //check_EEPROM( hd_ ) ;
          // (period of clk = 4 micro-sec) * (8bits/byte) * (size of write data + address + command + 10) 
-         int tt = 4*8*(writeSize+2+1+100) ; 
+         int tt = (1000/spi_clk)*8*(writeSize+2+1+100) ; 
          usleep( tt ) ;
+     }
+
+     if ( doLog ) {
+        char images[8];
+	sprintf( images, "%d-%d", imageChoice1 , imageChoice2 );
+	theLog.result.push_back( string(images) );
+        if ( complete ) theLog.result.push_back(" pass ") ;
+        else            theLog.result.push_back(" fail ") ;
      }
 }
 
@@ -739,7 +818,7 @@ void uHTRCtrlMezzInterface::spi_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct&
          if ( rc !=0 ) printf(" MAC EEPROM Page Write Fail (%d) \n", rc ) ;
 
          // (period of clk = 4 micro-sec) * (8bits/byte) * (size of write data + address + command + 10) 
-         int tt = 4*8*(writeSize+1+1+100) ; 
+         int tt = (1000/spi_clk)*8*(writeSize+1+1+100) ; 
          usleep( tt ) ;
          //check_EEPROM( hd_ ) ;
      }
@@ -772,7 +851,12 @@ void uHTRCtrlMezzInterface::writeFirmware( sub_handle& hd_, string mcsFileName )
      // Read from MCS file - 4 bits character
      vector<unsigned char> source ;
      readMCSFile( source, mcsFileName ) ;
-
+     // Log writing firmware 
+     if ( doLog ) {
+        int pos = 1 + mcsFileName.rfind("/") ;
+	string mcsNameNoPath = mcsFileName.substr( pos ) ;
+	theLog.result.push_back( mcsNameNoPath );
+     }
      // Form the input format  - 8 bits words
      //string imageFile = tool_readline(" mcs write Filename : " ) ;
      //FILE* pfile = fopen( imageFile.c_str(), "w" ) ; 
@@ -802,6 +886,7 @@ void uHTRCtrlMezzInterface::writeFirmware( sub_handle& hd_, string mcsFileName )
      vector<unsigned char> fillIn ;
      vector<char> addr(3) ;
 
+     bool complete = true ;
      for ( int i = 0; i < nsectors; i++) {
          spi_sector_erase( hd_ , i ) ;
          printf(" Erased and writing to sector[%d] -> starting addr[%x] ", i, i*sectorSize ) ;
@@ -867,8 +952,13 @@ void uHTRCtrlMezzInterface::writeFirmware( sub_handle& hd_, string mcsFileName )
 
          if ( !sectorDone ) {
             printf(" Firmware programming failed !!!! \n" ) ;
+            complete = false ;
             break ;
          }
+     }
+     if ( doLog ) {
+        if ( complete )  theLog.result.push_back("pass") ;
+        else            theLog.result.push_back("fail") ;
      }
      printf("  ... write cycle finished \n" ) ;
 
@@ -1108,7 +1198,7 @@ void uHTRCtrlMezzInterface::spi_sector_erase( sub_handle& hd_, int iSector ) {
    usleep(50) ;
    if ( rc !=0 ) printf(" SPI Write Enable fail \n" ) ;
    isWEL = spi_status( hd_ , 1 ) ;
-   if ( !isWEL )  printf(" WEL fail before writing \n" ) ;
+   //if ( !isWEL )  printf(" WEL fail before writing \n" ) ;
 
    // (2) sector erase
    wbuff[0] =  CMD_SE ; 
@@ -1171,7 +1261,7 @@ void uHTRCtrlMezzInterface::spi_write( sub_handle& hd_, vector<char> addr , vect
    if ( rc !=0 ) printf(" SPI Page programming fail - error code :%d \n", rc ) ;
 
    // (period of clk = 4 micro-sec, 250kHz ) * ( 8bits/byte) * ( size of write data + address + command + 10 ) 
-   int tt = 4*8*(writeSize+sz_a+1+100) ; 
+   int tt = (1000/spi_clk)*8*(writeSize+sz_a+1+100) ; 
    usleep( tt ) ;
 
    // Check the status register 
@@ -1224,8 +1314,8 @@ unsigned char uHTRCtrlMezzInterface::Char2Hex(unsigned char c) {
 }
 
 
-// mezz_tupe_code  3: Flash , 4: JTag , 5: CPLD 
-void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
+// mezz_type_code  3: Flash , 4: JTag , 5: CPLD 
+bool uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
 
   printf(" ==============================\n") ;
   printf(" | Mezzanine ID code          |\n") ;
@@ -1237,16 +1327,20 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
   //printf(" sz of id : %d \n", sizeof(id) ) ;
 
   char macA[6] ;
-  if ( mezz_type == 3 )  i2c_read_MAC( hd_, macA, 4 ) ;
-  if ( mezz_type == 4 )  i2c_read_MAC( hd_, macA, 1 ) ;
-  if ( mezz_type == 5 )  spi_read_MAC( hd_, macA ) ;
-  
+  bool validMAC ;
+  if ( mezz_type == 3 )  validMAC = i2c_read_MAC( hd_, macA, 4 ) ;
+  if ( mezz_type == 4 )  validMAC = i2c_read_MAC( hd_, macA, 1 ) ;
+  if ( mezz_type == 5 )  validMAC = spi_read_MAC( hd_, macA ) ;
+  if ( !validMAC ) { 
+     printf(" Invalid MAC Address \n") ;
+     return false ;
+  }
 
-  //for ( int i=0; i< 6; i++ ) {
-  //    id.macid[i] = (uint8_t) (macA[i]&0xFF) ;
-  //    printf(" <%2x> ",  id.macid[i] ) ;
-  //}
-  printf("\n") ;
+  char hmac[20];
+  sprintf(hmac, "%02x:%02x:%02x:%02x:%02x:%02x", 0xff&macA[0], 0xff&macA[1], 0xff&macA[2], 0xff&macA[3], 0xff&macA[4], 0xff&macA[5]);
+  if (doLog) theLog.mac       = string( hmac ) ;
+  if (doLog) theLog.mezz_type = mezz_type ;
+
 
   id.data_format_version = 1 ; // this is version 1
   id.mezz_subtype_code   = 1 ; // see codes in the sections below
@@ -1260,16 +1354,16 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
   // Gather Information for mezzanine
 
   // Serial Number
-  /*
-  int sn = tool_readline_int("Serial number: ");
-  id.serial_number[0]=sn&0xFF;
-  id.serial_number[1]=(sn>>8)&0xFF;
-  */
-
   // log the record in file and determine SN for the mezzanine
-  int sn = log_test( hd_, mezz_type ) ;
+  int sn = log_SN( hd_, mezz_type ) ;
+  if ( sn <  0 ) {
+     printf(" Fail to find a SN !!!\n") ;
+     return false ;
+  }
+
   id.serial_number[0]=sn&0xFF;
   id.serial_number[1]=(sn>>8)&0xFF;
+  if (doLog) theLog.sn = sn ;
 
   // Testing Date
   time_t tt ;
@@ -1281,6 +1375,7 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
   //printf(" date2: %s \n", dateStr ) ;
   strncpy( (char*)id.manu_date, dateStr, 11 );
   id.manu_date[10]=0;
+  if (doLog) theLog.date = string(dateStr) ;
 
   // Testing Site
   std::string site  = "Site: "; 
@@ -1288,6 +1383,7 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
   site += site_ ;
   strncpy((char*)id.manu_site,site.c_str(),16);
   id.manu_site[15]=0;
+  if (doLog) theLog.site = site_ ;
 
   // Tester Name
   std::string tester  = "Tester: "; 
@@ -1295,9 +1391,10 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
   tester += tester_ ;
   strncpy((char*)id.manu_tester,tester.c_str(),16);
   id.manu_tester[15]=0;
+  if (doLog) theLog.tester = tester_ ;
 
   // Testing release 
-  std::string rel = "ctrl.1";
+  std::string rel = "ctr_v01";
   strncpy((char*)id.test_release,rel.c_str(),8);
   id.test_release[7]=0;
 
@@ -1305,6 +1402,7 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
   std::string note_ = tool_readline("Note: " );
   strncpy((char*)id.notes, note_.c_str(), 56 );
   id.notes[55]=0;
+  if (doLog) theLog.note = note_ ;
 
   // Write record into MAC_EEPROM
   if ( mezz_type == 3 ) i2c_write_MAC_EEPROM( hd_ , id, 4 ) ;
@@ -1313,65 +1411,74 @@ void uHTRCtrlMezzInterface::tag_MezzId( sub_handle& hd_, int mezz_type ){
      spi_switch( hd_ ,  9 ) ;
      spi_write_MAC_EEPROM( hd_ , id ) ;
   }
-
+  return true ;
 
 }
 
-
+// Load the SN from the log file
 // mezz_type_code  3: Flash , 4: JTag , 5: CPLD 
 bool uHTRCtrlMezzInterface::load_SN( ) {
 
   for (int i=0; i<3; i++) next_sn[i] = 1 ;
-  FILE* logfile = fopen( "ctrlTestLog.txt", "r" ) ; 
-  if ( logfile == NULL ) return false ;
+  FILE* snfile = fopen( "ctrlTestLog.txt", "r" ) ; 
+  if ( snfile == NULL ) {
+     printf(" Can not open SN log file !!!\n") ;
+     return false ;
+  }
 
   char line[256] ;
-  while ( !feof(logfile) ) {
+  while ( !feof(snfile) ) {
 
         if ( line[0] == '#' ) continue ;
 
-        char* c_ = fgets(line, 256, logfile ) ;
+        char* c_ = fgets(line, 256, snfile ) ;
         if ( c_ == NULL ) break ;
 
         char mac[17];
         unsigned int sn, mezzType;
         sscanf( line, "%s %d %d\n", mac, &sn, &mezzType );
-        printf(" %s, %d, %d \n", mac, mezzType, sn) ;
+        //printf(" %s, %d, %d \n", mac, mezzType, sn) ;
         snMap[ string(mac) ] = std::make_pair(mezzType, sn);
         if ( sn >= next_sn[mezzType-3] ) next_sn[mezzType-3] = sn+1  ;
   }
-  fclose( logfile );
+  fclose( snfile );
   return true ;
 
 }
 
 // mezz_type_code  3: Flash , 4: JTag , 5: CPLD 
-int uHTRCtrlMezzInterface::log_test( sub_handle& hd_, int mezz_type ) {
+int uHTRCtrlMezzInterface::log_SN( sub_handle& hd_, int mezz_type ) {
 
   // Load the database of sn list from the sn file
   bool isloaded = load_SN() ;
+  if ( !isloaded ) return -1 ;
 
   // Read the MAC address
   char macA[6] ;
-  if ( mezz_type == 3 )  i2c_read_MAC( hd_, macA, 4 ) ;
-  if ( mezz_type == 4 )  i2c_read_MAC( hd_, macA, 1 ) ;
-  if ( mezz_type == 5 )  spi_read_MAC( hd_, macA ) ;
+  bool validMAC = true ; 
+  if ( mezz_type == 3 )  validMAC = i2c_read_MAC( hd_, macA, 4 ) ;
+  if ( mezz_type == 4 )  validMAC = i2c_read_MAC( hd_, macA, 1 ) ;
+  if ( mezz_type == 5 )  validMAC = spi_read_MAC( hd_, macA ) ;
 
   char hmac[20];
   sprintf(hmac, "%02x:%02x:%02x:%02x:%02x:%02x", 0xff&macA[0], 0xff&macA[1], 0xff&macA[2], 0xff&macA[3], 0xff&macA[4], 0xff&macA[5]);
   string mac(hmac) ;
- 
-  //
+  if ( !validMAC ) {
+     printf(" Invalid MAC address !!!\n" ) ;
+     return -1 ;
+  }
+
+  // determine the SN for the mezzine
   int sn = 0 ;
-  if ( snMap.find( mac ) == snMap.end() || !isloaded ) {
+  if ( snMap.find( mac ) == snMap.end() ) {
 
-     FILE* logfile = fopen( "ctrlTestLog.txt", "a+" ) ; 
-     if ( logfile == NULL )  printf(" file opened error ! \n") ;
+     FILE* snfile = fopen( "ctrlTestLog.txt", "a+" ) ; 
+     if ( snfile == NULL )  printf(" file opened error ! \n") ;
 
-     fprintf( logfile, "%s %d %d\n", hmac, next_sn[mezz_type-3], mezz_type );
+     fprintf( snfile, "%s %d %d\n", hmac, next_sn[mezz_type-3], mezz_type );
      next_sn[mezz_type-3] +=1 ;
      sn = next_sn[mezz_type-3] ;
-     fclose( logfile );
+     fclose( snfile );
   } else {
 
      pair<unsigned int, unsigned int> val =  snMap.find( mac )->second ;
@@ -1379,4 +1486,51 @@ int uHTRCtrlMezzInterface::log_test( sub_handle& hd_, int mezz_type ) {
      sn = val.second ;
   }
   return sn ;
+
+}
+
+
+void uHTRCtrlMezzInterface::start_log_test() {
+
+   theLog.sn = -1 ;
+   theLog.mac = "00:00:00:00:00:00" ;
+   theLog.date = "" ;
+   doLog = true ;
+}
+
+void uHTRCtrlMezzInterface::stop_log_test( string logfileName ) {
+
+    if ( logfileName.size() < 1 ) logfileName = "Test_log.txt" ;
+    FILE* logfile = fopen( logfileName.c_str() , "a+" ) ; 
+ 
+    // The case for MMC 
+    if ( theLog.sn == -1 && theLog.mac == "00:00:00:00:00:00" ) {
+  
+       int mmc_sn = tool_readline_int(" Please enter the SN for MMC :" ) ; 
+       theLog.sn = mmc_sn ;
+
+       theLog.mezz_type = 6 ;
+       time_t tt ;
+       time(&tt ) ;
+       char dateStr[11] ;
+       struct tm* now = localtime( &tt );
+       sprintf ( dateStr, "%d-%d-%d", now->tm_year+1900 , now->tm_mon+1 , now->tm_mday  ); 
+       theLog.date = string(dateStr) ;
+
+       string site_ = tool_readline(" Testing Site: " ) ; 
+       theLog.site = site_ ;
+       string tester_ = tool_readline(" Tester Name: " ) ; 
+       theLog.tester  = tester_ ;
+       string note_ = tool_readline(" Testing Note: " ) ; 
+       theLog.note  = note_ ;
+    }
+   
+    //fprintf( logfile, " sn        mac         type   date    site  name   result  note\n" );
+    fprintf( logfile, " %d  %s   %d   %s  %s  %s ",  theLog.sn, theLog.mac.c_str(), theLog.mezz_type, theLog.date.c_str(), theLog.site.c_str(), theLog.tester.c_str()  );
+    for ( size_t i=0; i< theLog.result.size() ; i++ ) {
+        fprintf( logfile, " %s", theLog.result[i].c_str() ) ;
+    }
+    fprintf(logfile, " %s ", theLog.note.c_str() ) ;
+    fprintf( logfile, "\n" ) ;
+    fclose( logfile ) ;
 }

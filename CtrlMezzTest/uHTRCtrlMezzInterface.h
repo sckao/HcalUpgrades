@@ -27,23 +27,34 @@ struct MezzIdStruct {
                                      // available for future use if needed
 };
 
+struct testResult {
+       int mezz_type ; // 3: Flash , 4: JTag , 5: CPLD 
+       int sn ;
+       std::string mac ;  
+       std::string date ;
+       std::string site ;
+       std::string tester ;
+       std::string note ;
+       std::vector< std::string > result ;
+};
 
 class uHTRCtrlMezzInterface {
 
 public:
 
-  uHTRCtrlMezzInterface() { } ;
+  uHTRCtrlMezzInterface() ;
   ~uHTRCtrlMezzInterface() { } ;
   
   void set_sub20_frequence( sub_handle& hd_, int freq = 2000 ) ;
   void scan_i2c_slaves( sub_handle& hd_ ) ;
   void Test( sub_handle& hd_ ) ;
+  void Test2( sub_handle& hd_ ) ;
   void spi_test( sub_handle& hd_ ) ;
 
   // Functions for i2c devices
   void read_ADC( sub_handle& hd_, int i2c_ch ) ;
   void reset_ADC( sub_handle& hd_, int i2c_ch ) ;
-  void i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_ch ) ;
+  bool i2c_read_MAC( sub_handle& hd_, char* macA, int i2c_ch ) ;
   void i2c_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct& id, int i2c_ch ) ;
   std::vector<char> i2c_read_MAC_EEPROM( sub_handle& hd_, uint16_t addr, int nRead = 1 ) ;
   // GPIO functions
@@ -57,12 +68,14 @@ public:
   void spi_read( sub_handle& hd_, std::vector<char> instruct, std::vector<char>& output, int readsize ) ;
   void spi_write( sub_handle& hd_, std::vector<char> address, std::vector<unsigned char>& input, int writesize, int input_i = 0) ;
   bool spi_status( sub_handle& hd_, int bitPos ) ;
+  // only 3 clock setup 
+  void set_spi_clock( int clk_ ) { spi_clk = clk_ ; } ;
 
   // For CPLD Mezzanine
   void check_EEPROM( sub_handle& hd_ ) ;
   void write_CLK_EEPROM(  sub_handle& hd_, int imageChoice1 , int imageChoice2 ) ;
   void erase_CLK_EEPROM(  sub_handle& hd_, bool allZero = false ) ;
-  void spi_read_MAC( sub_handle& hd_, char* macA  ) ;
+  bool spi_read_MAC( sub_handle& hd_, char* macA  ) ;
   void spi_write_MAC_EEPROM( sub_handle& hd_, MezzIdStruct& id ) ;
   std::vector<char> spi_read_EEPROM( sub_handle& hd_, int spi_ch, bool toFile = false ) ;
 
@@ -75,17 +88,23 @@ public:
   void readMCSFile( std::vector<unsigned char>& source , std::string mcsFileName = "" ) ;
   void printMCSFile() ;
 
-  void tag_MezzId( sub_handle& hd_, int mezz_type ) ;
+  bool tag_MezzId( sub_handle& hd_, int mezz_type ) ;
   bool load_SN( ) ;
-  int log_test( sub_handle& hd_, int mezz_type ) ;
+  int log_SN( sub_handle& hd_, int mezz_type ) ;
 
   unsigned char Char2Hex(unsigned char c) ;
   std::string tool_readline( std::string prompt ) ;
   int tool_readline_int( std::string prompt ) ;
+  void start_log_test() ;
+  void stop_log_test( std::string logfileName = "Test_log.txt") ;
 
-//private:
+private:
 
   unsigned int next_sn[3] ;
+  testResult theLog ; 
+  bool doLog ;
+  int spi_clk ; 
+ 
 };
 
 #endif

@@ -20,13 +20,10 @@ int spi_channel = 2 ;
 void help() ;
 bool InitializeSub20( sub_device& dev_ , sub_handle& hd_ ) ;
 
-
 void help()
 {
     printf("Usage: ./uHTR_CtrlMezz_Test.exe modeFlags [options]\n");
     printf("Mode Flags - These can be used in conjunction but will always evaluate in the order listed below.\n");
-    printf(" --initial,         -i   Initialize sub20\n");
-    printf(" --scan,            -s   Scan i2c slaves\n");
     printf(" --flash,           -f   Flash test\n");
     printf(" --clkset,          -k   Write CPLD EEPROM\n");
     printf(" --jtag,            -j   Tag JTAG Mezzanine\n");
@@ -34,8 +31,10 @@ void help()
     printf(" --readflash,       -r   Read Flash\n");
     printf(" --writeflash,      -w   Write Flash\n");
     printf(" --cpld,            -c   Test CPLD\n");
+    printf(" --initial,         -i   Initialize sub20\n");
+    printf(" --scan,            -s   Scan i2c slaves\n");
     printf(" --printMCS,        -p   Print MCS file\n");
-    printf(" --test,            -t   Test MMC\n");
+    printf(" --test,            -t   Test \n");
     printf(" --help,            -h   Showing this help menu\n");
     printf(" ==================================================== \n") ;
     printf(" == SPI Targets 0: BCK_CS0,   1: BCK_CS1, 2: BCK_CS  \n") ;
@@ -50,7 +49,7 @@ int main(int argc, char* argv[])
 
     int opt;
     int option_index = 0;
-    int rev;
+    int rev, freq_;
     static struct option long_options[] = {
         {"flash",               no_argument, 0, 'f'},
         {"initial",             no_argument, 0, 'i'},
@@ -77,20 +76,23 @@ int main(int argc, char* argv[])
 
     InitializeSub20( dev, hdl );
     ctrl->set_sub20_frequence( hdl, 2000 ) ;
+    ctrl->set_spi_clock( 1000 ) ;
+    bool validMac = true ;
 
     while((opt = getopt_long(argc, argv, "ftipkjmsh:c:w:r:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
             case 'i':
-                InitializeSub20( dev, hdl );
+                //InitializeSub20( dev, hdl );
+                ctrl->Test2( hdl ) ;          
                 break;
             case 't':
                 //spi_channel = int(atoi(optarg));
-                //InitializeSub20( dev, hdl );
-                //ctrl->set_sub20_frequence( hdl ) ;
-                //ctrl->Test( hdl ) ;          
-                ctrl->log_test( hdl, 4 ) ;          
+                //freq_ = ctrl->tool_readline_int(" Set I2C Frequence (489Hz ~ 444444 Hz) : " ) ;
+                //ctrl->set_sub20_frequence( hdl, freq_ ) ;
+                ctrl->Test( hdl ) ;          
+                //ctrl->log_SN( hdl, 4 ) ;          
                 break;
             case 'c':
                 spi_channel = int(atoi(optarg));
@@ -99,30 +101,46 @@ int main(int argc, char* argv[])
                 ctrl->spi_read_EEPROM( hdl, spi_channel, true ) ;
                 break;
             case 'j':
-                ctrl->tag_MezzId( hdl, 4 ) ;
-                ctrl->read_ADC( hdl, 1 ) ;
+                ctrl->start_log_test() ;
+                validMac = ctrl->tag_MezzId( hdl, 4 ) ;
+                if ( validMac ) {
+                   ctrl->reset_ADC( hdl, 1 ) ;
+                   ctrl->read_ADC( hdl, 1 ) ;
+                   ctrl->stop_log_test( "/home/daq/hcal/TestLog/JTag_test_log.txt" ) ;
+                }
                 break;
+
             case 'm':
+                ctrl->start_log_test() ;
                 ctrl->reset_ADC( hdl, 0 ) ;
                 ctrl->read_ADC( hdl, 0 ) ;
+                ctrl->stop_log_test( "/home/daq/hcal/TestLog/MMC_test_log.txt" ) ;
                 break;
             case 'k':
-                ctrl->tag_MezzId( hdl, 5 ) ;
-                ctrl->spi_switch( hdl, 8 ) ;          
-                ctrl->check_EEPROM( hdl ) ;
-                ctrl->erase_CLK_EEPROM( hdl ) ;
-                ctrl->write_CLK_EEPROM( hdl, 320, 240 ) ;
+                ctrl->start_log_test() ;
+                validMac = ctrl->tag_MezzId( hdl, 5 ) ;
+                if ( validMac ) {
+                   ctrl->spi_switch( hdl, 8 ) ;          
+		   ctrl->check_EEPROM( hdl ) ;
+		   ctrl->erase_CLK_EEPROM( hdl ) ;
+		   ctrl->write_CLK_EEPROM( hdl, 320, 240 ) ;
+		   ctrl->stop_log_test( "/home/daq/hcal/TestLog/Clock_test_log.txt" ) ;
+                }
                 break;
             case 'f':
-                ctrl->tag_MezzId( hdl, 3 ) ;
-                ctrl->spi_switch( hdl, 5, 1  ) ;          
-                ctrl->writeFirmware( hdl, "/home/sckao/HCAL_Upgrade/firmwares/uhtr_front_HF4800_0_C_0.mcs" ) ;
-                ctrl->spi_switch( hdl, 2, 1  ) ;          
-                ctrl->writeFirmware( hdl, "/home/sckao/HCAL_Upgrade/firmwares/uhtr_back_HF4800_0_D_40.mcs" ) ;
-                ctrl->spi_switch( hdl, 5, 0  ) ;          
-                ctrl->writeFirmware( hdl, "/home/sckao/HCAL_Upgrade/firmwares/uhtr_front_HF1600_0_C_0.mcs" ) ;
-                ctrl->spi_switch( hdl, 2, 0  ) ;          
-                ctrl->writeFirmware( hdl, "/home/sckao/HCAL_Upgrade/firmwares/uhtr_back_HF1600_0_D_40.mcs" ) ;
+                ctrl->start_log_test() ;
+                validMac = ctrl->tag_MezzId( hdl, 3 ) ;
+                if ( validMac ) {
+		   ctrl->spi_switch( hdl, 2, 1  ) ;          
+		   ctrl->writeFirmware( hdl, "/home/daq/firmware/uhtr_back_HF1600_0_E_10.mcs" ) ;
+                   ctrl->spi_switch( hdl, 5, 1  ) ;          
+		   ctrl->writeFirmware( hdl, "/home/daq/firmware/uhtr_front_HF1600_0_C_0.mcs" ) ;
+		   ctrl->spi_switch( hdl, 2, 0  ) ;          
+		   ctrl->writeFirmware( hdl, "/home/daq/firmware/uhtr_back_HF4800_0_E_10.mcs" ) ;
+		   ctrl->spi_switch( hdl, 5, 0  ) ;          
+		   ctrl->writeFirmware( hdl, "/home/daq/firmware/uhtr_front_HF4800_0_C_0.mcs" ) ;
+		   ctrl->stop_log_test( "/home/daq/hcal/TestLog/Flash_test_log.txt" ) ;
+                }
                 break;
             case 'w':
                 ctrl->tag_MezzId( hdl, 3 ) ;
